@@ -189,11 +189,11 @@ class _SubjectsTabWidgetState extends ConsumerState<SubjectsTabWidget> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         heroTag: 'subjects_fab',
         onPressed: () => _showAddSubjectDialog(context),
-        icon: const Icon(Icons.add),
-        label: const Text('បន្ថែម', style: AppTextStyles.button),
+        tooltip: 'បន្ថែមមុខវិជ្ជា',
+        child: const Icon(Icons.add),
       ),
     );
   }

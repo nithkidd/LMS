@@ -11,10 +11,10 @@ class RosterTabWidget extends ConsumerStatefulWidget {
   const RosterTabWidget({Key? key, required this.classId}) : super(key: key);
 
   @override
-  ConsumerState<RosterTabWidget> createState() => _RosterTabWidgetState();
+  ConsumerState<RosterTabWidget> createState() => RosterTabWidgetState();
 }
 
-class _RosterTabWidgetState extends ConsumerState<RosterTabWidget> {
+class RosterTabWidgetState extends ConsumerState<RosterTabWidget> {
   @override
   void initState() {
     super.initState();
@@ -24,6 +24,9 @@ class _RosterTabWidgetState extends ConsumerState<RosterTabWidget> {
           .loadStudentsForClass(widget.classId);
     });
   }
+
+  /// Called externally via GlobalKey from the parent Scaffold's FAB.
+  void showAddStudentDialog() => _showAddStudentDialog(context);
 
   void _showAddStudentDialog(BuildContext context) async {
     final result = await showDialog<Map<String, dynamic>>(
@@ -51,25 +54,6 @@ class _RosterTabWidgetState extends ConsumerState<RosterTabWidget> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(AppSizes.paddingMd),
-          child: SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSizes.paddingMd,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                ),
-              ),
-              onPressed: () => _showAddStudentDialog(context),
-              icon: const Icon(Icons.add, size: AppSizes.iconLg),
-              label: const Text('បន្ថែម', style: AppTextStyles.button),
-            ),
-          ),
-        ),
         Expanded(
           child: studentsState.when(
             data: (students) {

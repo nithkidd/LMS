@@ -93,13 +93,11 @@ final studentProfileDataProvider = FutureProvider.autoDispose.family<StudentProf
   
   List<StudentProfileScore> profileScores = [];
   for (var score in scores) {
-    if (score.assignmentId != null) {
-       final assignment = await assignmentRepo.getById(score.assignmentId);
-       if (assignment != null) {
-         profileScores.add(StudentProfileScore(score: score, assignment: assignment));
-       }
+     final assignment = await assignmentRepo.getById(score.assignmentId);
+     if (assignment != null) {
+       profileScores.add(StudentProfileScore(score: score, assignment: assignment));
+     }
     }
-  }
   
   return StudentProfileData(
     scores: profileScores.reversed.toList(),

@@ -25,25 +25,38 @@ class ClassNotifier extends AsyncNotifier<List<ClassModel>> {
     });
   }
 
-  Future<void> addClass(int schoolId, String name, String academicYear) async {
+  Future<void> addClass(
+    int schoolId,
+    String name,
+    String academicYear, {
+    bool isAdviser = false,
+    List<String>? subjects,
+  }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(classRepositoryProvider);
-      final newClass = ClassModel(schoolId: schoolId, name: name, academicYear: academicYear);
+      final newClass = ClassModel(
+        schoolId: schoolId,
+        name: name,
+        academicYear: academicYear,
+        isAdviser: isAdviser,
+      );
       await repository.insert(newClass);
-      
-      return await repository.getClassesBySchoolId(_currentSchoolId ?? schoolId);
+
+      return await repository.getClassesBySchoolId(
+        _currentSchoolId ?? schoolId,
+      );
     });
   }
 
   Future<void> deleteClass(int id) async {
     if (_currentSchoolId == null) return;
-    
+
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(classRepositoryProvider);
       await repository.delete(id);
-      
+
       return await repository.getClassesBySchoolId(_currentSchoolId!);
     });
   }
@@ -53,17 +66,20 @@ class ClassNotifier extends AsyncNotifier<List<ClassModel>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(classRepositoryProvider);
-      await repository.update(ClassModel(
-        id: id,
-        schoolId: _currentSchoolId!,
-        name: name,
-        academicYear: academicYear,
-      ));
+      await repository.update(
+        ClassModel(
+          id: id,
+          schoolId: _currentSchoolId!,
+          name: name,
+          academicYear: academicYear,
+        ),
+      );
       return await repository.getClassesBySchoolId(_currentSchoolId!);
     });
   }
 }
 
-final classNotifierProvider = AsyncNotifierProvider<ClassNotifier, List<ClassModel>>(() {
-  return ClassNotifier();
-});
+final classNotifierProvider =
+    AsyncNotifierProvider<ClassNotifier, List<ClassModel>>(() {
+      return ClassNotifier();
+    });

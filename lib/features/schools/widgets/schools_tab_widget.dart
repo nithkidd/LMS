@@ -125,6 +125,13 @@ class _SchoolsTabWidgetState extends ConsumerState<SchoolsTabWidget> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: _isEditMode
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showAddSchoolDialog(context),
+              tooltip: 'បន្ថែមសាលា',
+              child: const Icon(Icons.add),
+            ),
       body: Column(
         children: [
           // Search Bar and Edit Button Row
@@ -183,55 +190,36 @@ class _SchoolsTabWidgetState extends ConsumerState<SchoolsTabWidget> {
             ),
           ),
 
-          // Add Button or Delete Selected Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.paddingMd),
-            child: SizedBox(
-              width: double.infinity,
-              child: _isEditMode && _selectedSchoolIds.isNotEmpty
-                  ? FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.danger,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSizes.paddingMd,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppSizes.radiusMd,
-                          ),
-                        ),
-                      ),
-                      onPressed: _deleteSelectedSchools,
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: AppSizes.iconLg,
-                      ),
-                      label: Text(
-                        'លុបដែលបានជ្រើស ${_selectedSchoolIds.length}',
-                        style: AppTextStyles.button,
-                      ),
-                    )
-                  : FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSizes.paddingMd,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppSizes.radiusMd,
-                          ),
-                        ),
-                      ),
-                      onPressed: _isEditMode
-                          ? null
-                          : () => _showAddSchoolDialog(context),
-                      icon: const Icon(Icons.add, size: AppSizes.iconLg),
-                      label: const Text('បន្ថែម', style: AppTextStyles.button),
+          // Delete Selected Button (edit mode only)
+          if (_isEditMode && _selectedSchoolIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.paddingMd,
+                0,
+                AppSizes.paddingMd,
+                AppSizes.paddingMd,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.danger,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSizes.paddingMd,
                     ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    ),
+                  ),
+                  onPressed: _deleteSelectedSchools,
+                  icon: const Icon(Icons.delete_outline, size: AppSizes.iconLg),
+                  label: Text(
+                    'លុបដែលបានជ្រើស ${_selectedSchoolIds.length}',
+                    style: AppTextStyles.button,
+                  ),
+                ),
+              ),
             ),
-          ),
-
-          const SizedBox(height: AppSizes.paddingMd),
 
           // Select All option in edit mode
           if (_isEditMode)
@@ -382,7 +370,7 @@ class _SchoolsTabWidgetState extends ConsumerState<SchoolsTabWidget> {
                   ),
                   itemCount: filteredSchools.length,
                   separatorBuilder: (_, __) =>
-                      const SizedBox(height: AppSizes.paddingSm),
+                      const SizedBox(height: AppSizes.paddingMd),
                   itemBuilder: (context, index) {
                     final school = filteredSchools[index];
                     return SchoolListTileWidget(

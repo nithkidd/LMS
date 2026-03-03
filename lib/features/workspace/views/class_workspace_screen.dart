@@ -17,11 +17,13 @@ import '../widgets/workspace_bottom_nav_bar.dart';
 class ClassWorkspaceScreen extends ConsumerStatefulWidget {
   final int classId;
   final String className;
+  final bool isAdviser;
 
   const ClassWorkspaceScreen({
     super.key,
     required this.classId,
     required this.className,
+    this.isAdviser = false,
   });
 
   @override
@@ -32,19 +34,27 @@ class ClassWorkspaceScreen extends ConsumerStatefulWidget {
 class _ClassWorkspaceScreenState extends ConsumerState<ClassWorkspaceScreen> {
   int _currentIndex = 0;
   final ExcelTransferService _excelTransferService = ExcelTransferService();
+  final _rosterKey = GlobalKey<RosterTabWidgetState>();
 
   late final List<Widget> _tabs;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the tab views once
-    _tabs = [
-      RosterTabWidget(classId: widget.classId),
-      SubjectsTabWidget(classId: widget.classId),
-      AssignmentsTabWidget(classId: widget.classId),
-      GradebookMainTabWidget(classId: widget.classId),
-    ];
+    // Initialize the tab views conditionally
+    if (widget.isAdviser) {
+      _tabs = [
+        RosterTabWidget(key: _rosterKey, classId: widget.classId),
+        SubjectsTabWidget(classId: widget.classId),
+        AssignmentsTabWidget(classId: widget.classId),
+        GradebookMainTabWidget(classId: widget.classId),
+      ];
+    } else {
+      _tabs = [
+        SubjectsTabWidget(classId: widget.classId),
+        AssignmentsTabWidget(classId: widget.classId),
+      ];
+    }
   }
 
   Future<void> _reloadSubjects() async {
@@ -174,7 +184,8 @@ class _ClassWorkspaceScreenState extends ConsumerState<ClassWorkspaceScreen> {
   }
 
   List<PopupMenuEntry<String>> _buildActionMenuItems() {
-    if (_currentIndex == 1) {
+    int subjectIdx = widget.isAdviser ? 1 : 0;
+    if (_currentIndex == subjectIdx) {
       return const [
         PopupMenuItem<String>(
           value: 'subjects_export',
@@ -187,7 +198,8 @@ class _ClassWorkspaceScreenState extends ConsumerState<ClassWorkspaceScreen> {
       ];
     }
 
-    if (_currentIndex == 3) {
+    int gradeIdx = widget.isAdviser ? 3 : -1;
+    if (_currentIndex == gradeIdx && gradeIdx != -1) {
       return const [
         PopupMenuItem<String>(
           value: 'gradebook_export',
@@ -224,9 +236,17 @@ class _ClassWorkspaceScreenState extends ConsumerState<ClassWorkspaceScreen> {
               ],
         elevation: 1,
       ),
+      floatingActionButton: (_currentIndex == 0 && widget.isAdviser)
+          ? FloatingActionButton(
+              onPressed: () => _rosterKey.currentState?.showAddStudentDialog(),
+              tooltip: 'បន្ថែមសិស្ស',
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: IndexedStack(index: _currentIndex, children: _tabs),
       bottomNavigationBar: WorkspaceBottomNavBar(
         currentIndex: _currentIndex,
+        isAdviser: widget.isAdviser,
         onTap: (index) {
           setState(() {
             _currentIndex = index;

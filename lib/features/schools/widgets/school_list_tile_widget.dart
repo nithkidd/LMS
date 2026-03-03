@@ -10,10 +10,10 @@ class SchoolListTileWidget extends ConsumerWidget {
   final VoidCallback onDelete;
 
   const SchoolListTileWidget({
-    Key? key,
+    super.key,
     required this.school,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   void _showEditDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController(text: school.name);
@@ -54,7 +54,7 @@ class SchoolListTileWidget extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('លុបសាលាចេញ?'),
         content: Text(
-          'លុប "${school.name}" មែនទេ? វានឹងលុបថ្នាក់ទាំងអស់ សិស្សទាំងអស់ និងពិន្ទុទាំងអស់នៅក្នុងសាលានេះ។',
+          'លុប "${school.name}" តើអ្នកប្រាកដទេ? សកម្មភាពនេះនឹងលុបទិន្នន័យថ្នាក់រៀន សិស្ស និងពិន្ទុទាំងអស់នៅក្នុងសាលានេះ។',
         ),
         actions: [
           TextButton(
@@ -76,9 +76,16 @@ class SchoolListTileWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Card(
+      elevation: 2,
+      shadowColor: primary.withOpacity(0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         onTap: () {
           if (school.id != null) {
             Navigator.push(
@@ -92,58 +99,110 @@ class SchoolListTileWidget extends ConsumerWidget {
             );
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Icon(
-                Icons.account_balance,
-                color: Theme.of(context).colorScheme.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Blue gradient banner ─────────  ─────────────────────────────
+            Container(
+              height: 120,
+              decoration: BoxDecoration(color: primary),
+              child: Stack(
+                children: [
+                  // Centered school icon
+                  const Center(
+                    child: Icon(
+                      Icons.account_balance_rounded,
+                      color: Colors.white,
+                      size: 42,
+                    ),
+                  ),
+                  // ⋮ Menu — top-right corner
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: PopupMenuButton<String>(
+                      icon: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.more_vert,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      ),
+                      onSelected: (value) {
+                        if (value == 'edit') _showEditDialog(context, ref);
+                        if (value == 'remove') _showDeleteDialog(context);
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.edit_outlined,
+                                color: primary,
+                                size: AppSizes.iconMd,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('កែប្រែ'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'remove',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                color: AppColors.danger,
+                                size: AppSizes.iconMd,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'លុប',
+                                style: TextStyle(color: AppColors.danger),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            title: Text(school.name, style: AppTextStyles.subheading),
-            trailing: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+
+            // ── White body ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(school.name, style: AppTextStyles.subheading),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text('ចុចដើម្បីមើលថ្នាក់', style: AppTextStyles.caption),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              onSelected: (value) {
-                if (value == 'edit') _showEditDialog(context, ref);
-                if (value == 'remove') _showDeleteDialog(context);
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.edit_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: AppSizes.iconMd,
-                      ),
-                      SizedBox(width: 8),
-                      Text('កែប្រែ'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'remove',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        color: AppColors.danger,
-                        size: AppSizes.iconMd,
-                      ),
-                      SizedBox(width: 8),
-                      Text('លុប', style: TextStyle(color: AppColors.danger)),
-                    ],
-                  ),
-                ),
-              ],
             ),
-          ),
+          ],
         ),
       ),
     );

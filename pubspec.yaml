@@ -46,6 +46,7 @@ dependencies:
   shared_preferences: ^2.2.2
   flutter_native_splash: ^2.4.1
   flutter_svg: ^2.0.10+1
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -71,7 +72,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/trellis_logo.svg
+    - assets/trellis-logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

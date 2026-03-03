@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class WorkspaceBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final bool isAdviser;
 
   const WorkspaceBottomNavBar({
     Key? key,
     required this.currentIndex,
     required this.onTap,
+    this.isAdviser = false,
   }) : super(key: key);
 
   @override
@@ -38,19 +40,20 @@ class WorkspaceBottomNavBar extends StatelessWidget {
         ),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(bottom: 4.0),
-              child: Icon(Icons.people_outline, size: 26),
+        items: [
+          if (isAdviser)
+            const BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4.0),
+                child: Icon(Icons.people_outline, size: 26),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4.0),
+                child: Icon(Icons.people, size: 26),
+              ),
+              label: 'សិស្ស',
             ),
-            activeIcon: Padding(
-              padding: EdgeInsets.only(bottom: 4.0),
-              child: Icon(Icons.people, size: 26),
-            ),
-            label: 'សិស្ស',
-          ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Padding(
               padding: EdgeInsets.only(bottom: 4.0),
               child: Icon(Icons.book_outlined, size: 26),
@@ -61,7 +64,7 @@ class WorkspaceBottomNavBar extends StatelessWidget {
             ),
             label: 'មុខវិជ្ជា',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Padding(
               padding: EdgeInsets.only(bottom: 4.0),
               child: Icon(Icons.assignment_outlined, size: 26),
@@ -72,17 +75,18 @@ class WorkspaceBottomNavBar extends StatelessWidget {
             ),
             label: 'កិច្ចការ',
           ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(bottom: 4.0),
-              child: Icon(Icons.grade_outlined, size: 26),
+          if (isAdviser)
+            const BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4.0),
+                child: Icon(Icons.grade_outlined, size: 26),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4.0),
+                child: Icon(Icons.grade, size: 26),
+              ),
+              label: 'តារាងពិន្ទុ',
             ),
-            activeIcon: Padding(
-              padding: EdgeInsets.only(bottom: 4.0),
-              child: Icon(Icons.grade, size: 26),
-            ),
-            label: 'តារាងពិន្ទុ',
-          ),
         ],
       ),
     );

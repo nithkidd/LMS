@@ -264,11 +264,11 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         heroTag: 'assignments_fab',
         onPressed: () => _showAddAssignmentDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('បន្ថែម', style: AppTextStyles.button),
+        tooltip: 'បន្ថែមកិច្ចការ',
+        child: const Icon(Icons.add),
       ),
     );
   }

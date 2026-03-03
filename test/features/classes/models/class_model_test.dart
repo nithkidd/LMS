@@ -8,6 +8,7 @@ void main() {
         id: 1,
         name: 'Math 101',
         academicYear: '2023-2024',
+        schoolId: 1,
       );
 
       final map = classModel.toMap();
@@ -36,6 +37,7 @@ void main() {
         id: 1,
         name: 'Math',
         academicYear: '2023',
+        schoolId: 2,
       );
 
       final copiedModel = classModel.copyWith(name: 'Advanced Math');

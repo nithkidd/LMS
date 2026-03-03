@@ -1,10 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
   static const _databaseName = "TeacherLMS.db";
-  static const _databaseVersion = 7;
+  static const _databaseVersion = 8;
 
   // Table Names
   static const tableSchools = 'schools';
@@ -27,8 +30,17 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, _databaseName);
+    final String path;
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      // Use a stable app-specific directory on desktop to avoid
+      // CWD-dependent paths from getDatabasesPath() on Windows.
+      final dir = await getApplicationSupportDirectory();
+      path = join(dir.path, _databaseName);
+    } else {
+      final dbPath = await getDatabasesPath();
+      path = join(dbPath, _databaseName);
+    }
     debugPrint('📂 DATABASE: $path');
 
     return await openDatabase(
@@ -66,6 +78,11 @@ class DatabaseHelper {
       );
       await db.execute('ALTER TABLE $tableStudents ADD COLUMN address TEXT');
     }
+    if (oldVersion < 8) {
+      await db.execute(
+        'ALTER TABLE $tableClasses ADD COLUMN is_adviser INTEGER DEFAULT 0',
+      );
+    }
   }
 
   Future _createTables(Database db) async {
@@ -86,6 +103,7 @@ class DatabaseHelper {
         school_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         academic_year TEXT NOT NULL,
+        is_adviser INTEGER DEFAULT 0,
         FOREIGN KEY (school_id) REFERENCES $tableSchools (id) ON DELETE CASCADE
       )
     ''');

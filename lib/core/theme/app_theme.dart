@@ -270,6 +270,7 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primaryColor,
         foregroundColor: AppColors.white,
+        shape: const CircleBorder(),
       ),
 
       // Progress indicator

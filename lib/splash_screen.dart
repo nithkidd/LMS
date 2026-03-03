@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:trellis/core/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -72,8 +71,8 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: SvgPicture.asset(
-                      'assets/trellis_logo.svg',
+                    child: Image.asset(
+                      'assets/trellis-logo.png',
                       fit: BoxFit.contain,
                     ),
                   ),

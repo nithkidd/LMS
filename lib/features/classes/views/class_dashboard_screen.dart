@@ -32,10 +32,16 @@ class _ClassDashboardScreenState extends ConsumerState<ClassDashboardScreen> {
   }
 
   void _showAddClassDialog(BuildContext context) {
-    AddClassDialog.show(context, (name, year) {
+    AddClassDialog.show(context, (name, year, isAdviser, subjects) {
       ref
           .read(classNotifierProvider.notifier)
-          .addClass(widget.schoolId, name, year);
+          .addClass(
+            widget.schoolId,
+            name,
+            year,
+            isAdviser: isAdviser,
+            subjects: subjects,
+          );
     });
   }
 
