@@ -10,8 +10,8 @@ import '../../subjects/providers/subject_provider.dart';
 import '../../subjects/views/subject_import_preview_screen.dart';
 import '../../students/widgets/roster_tab_widget.dart';
 import '../../subjects/widgets/subjects_tab_widget.dart';
-import '../../assignments/widgets/assignments_tab_widget.dart';
-import '../../assignments/widgets/assignments_tab_widget_with_permissions.dart';
+import '../../assignments/widgets/tab/assignments_tab_widget.dart';
+import '../../assignments/widgets/tab/assignments_tab_widget_with_permissions.dart';
 import '../../gradebook/views/gradebook_main_tab_widget.dart';
 import '../widgets/workspace_bottom_nav_bar.dart';
 

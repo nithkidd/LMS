@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/class_model.dart';
-import '../providers/class_provider.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../models/class_model.dart';
+import '../../providers/class_provider.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class ClassListTile extends ConsumerWidget {
   final ClassModel model;

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/class_provider.dart';
 import '../../workspace/views/class_workspace_screen.dart';
-import '../widgets/class_list_tile.dart';
-import '../widgets/add_class_dialog.dart';
+import '../widgets/tile/class_list_tile.dart';
+import '../widgets/dialog/add_class_dialog.dart';
 
 class ClassDashboardScreen extends ConsumerStatefulWidget {
   final int schoolId;

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../dashboard/widgets/home_tab_widget.dart';
+import '../widgets/tab/home_tab_widget.dart';
 import '../../schools/widgets/schools_tab_widget.dart';
-import '../../dashboard/widgets/global_statistics_tab_widget.dart';
-import '../../dashboard/widgets/user_settings_tab_widget.dart';
-import '../widgets/dashboard_bottom_nav_bar.dart';
+import '../widgets/tab/global_statistics_tab_widget.dart';
+import '../widgets/tab/user_settings_tab_widget.dart';
+import '../widgets/navbar/dashboard_bottom_nav_bar.dart';
 
 class MainDashboardScreen extends StatefulWidget {
   const MainDashboardScreen({super.key});

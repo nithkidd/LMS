@@ -1,39 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/assignment_provider.dart';
-import '../../subjects/providers/subject_provider.dart';
-import '../../subjects/models/subject_model.dart';
-import 'assignment_list_tile_widget.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../providers/assignment_provider.dart';
+import '../../../subjects/providers/subject_provider.dart';
+import '../../../subjects/models/subject_model.dart';
+import '../tile/assignment_list_tile_widget.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../data/khmer_months_list.dart';
 
-const List<String> kMonths = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-const Map<String, String> kMonthLabels = {
-  'Jan': 'មករា',
-  'Feb': 'កុម្ភៈ',
-  'Mar': 'មីនា',
-  'Apr': 'មេសា',
-  'May': 'ឧសភា',
-  'Jun': 'មិថុនា',
-  'Jul': 'កក្កដា',
-  'Aug': 'សីហា',
-  'Sep': 'កញ្ញា',
-  'Oct': 'តុលា',
-  'Nov': 'វិច្ឆិកា',
-  'Dec': 'ធ្នូ',
-};
 
 class AssignmentsTabWidget extends ConsumerStatefulWidget {
   final int classId;
