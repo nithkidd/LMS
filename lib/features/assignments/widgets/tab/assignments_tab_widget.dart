@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/assignment_provider.dart';
-import '../../../subjects/providers/subject_provider.dart';
-import '../../../subjects/models/subject_model.dart';
-import '../tile/assignment_list_tile_widget.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../data/khmer_months_list.dart';
 
+import '../../../../core/theme/app_theme.dart';
+import '../../../subjects/models/subject_model.dart';
+import '../../../subjects/providers/subject_provider.dart';
+import '../../data/khmer_months_list.dart';
+import '../../providers/assignment_provider.dart';
+import '../tile/assignment_list_tile_widget.dart';
 
 class AssignmentsTabWidget extends ConsumerStatefulWidget {
-  final int classId;
+  final String classId;
 
   const AssignmentsTabWidget({super.key, required this.classId});
 
@@ -37,12 +37,12 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
     final maxPointsController = TextEditingController(text: '100');
     String selectedMonth = kMonths[DateTime.now().month - 1];
     String selectedYear = DateTime.now().year.toString();
-    int? selectedSubjectId;
+    String? selectedSubjectId;
 
     final subjectsState = ref.watch(subjectNotifierProvider);
     List<SubjectModel> subjects = [];
-    if (subjectsState is AsyncData) {
-      subjects = subjectsState.value!;
+    if (subjectsState is AsyncData<List<SubjectModel>>) {
+      subjects = subjectsState.value;
     }
 
     if (subjects.isNotEmpty) {
@@ -51,56 +51,58 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('កិច្ចការថ្មី'),
+              title: const Text('បន្ថែមកិច្ចការ'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (subjects.isEmpty)
                       const Text(
-                        'សូមបន្ថែមមុខវិជ្ជាជាមុនសិននៅក្នុងជម្រើសថ្នាក់។',
-                        style: TextStyle(color: Colors.red),
+                        'សូមបន្ថែមមុខវិជ្ជាជាមុនសិន មុនពេលបង្កើតកិច្ចការ។',
+                        style: TextStyle(color: AppColors.danger),
                       )
                     else
-                      DropdownButtonFormField<int>(
+                      DropdownButtonFormField<String>(
                         initialValue: selectedSubjectId,
                         decoration: const InputDecoration(
                           labelText: 'មុខវិជ្ជា',
                         ),
                         items: subjects
                             .map(
-                              (s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text(s.name),
+                              (subject) => DropdownMenuItem(
+                                value: subject.id.toString(),
+                                child: Text(subject.name),
                               ),
                             )
                             .toList(),
-                        onChanged: (val) =>
-                            setStateDialog(() => selectedSubjectId = val),
+                        onChanged: (value) =>
+                            setStateDialog(() => selectedSubjectId = value),
                       ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSizes.paddingMd),
                     TextField(
                       controller: nameController,
                       decoration: const InputDecoration(
                         labelText: 'ឈ្មោះកិច្ចការ',
+                        hintText: 'សូមបញ្ចូលឈ្មោះកិច្ចការ',
                       ),
                       autofocus: true,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSizes.paddingMd),
                     TextField(
                       controller: maxPointsController,
                       decoration: const InputDecoration(
                         labelText: 'ពិន្ទុអតិបរមា',
+                        hintText: 'ឧទាហរណ៍ 100',
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSizes.paddingMd),
                     Row(
                       children: [
                         Expanded(
@@ -109,17 +111,17 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
                             decoration: const InputDecoration(labelText: 'ខែ'),
                             items: kMonths
                                 .map(
-                                  (m) => DropdownMenuItem(
-                                    value: m,
-                                    child: Text(kMonthLabels[m] ?? m),
+                                  (month) => DropdownMenuItem(
+                                    value: month,
+                                    child: Text(kMonthLabels[month] ?? month),
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (val) =>
-                                setStateDialog(() => selectedMonth = val!),
+                            onChanged: (value) =>
+                                setStateDialog(() => selectedMonth = value!),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSizes.paddingSm),
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: selectedYear,
@@ -128,14 +130,14 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
                             ),
                             items: ['2023', '2024', '2025', '2026']
                                 .map(
-                                  (y) => DropdownMenuItem(
-                                    value: y,
-                                    child: Text(y),
+                                  (year) => DropdownMenuItem(
+                                    value: year,
+                                    child: Text(year),
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (val) =>
-                                setStateDialog(() => selectedYear = val!),
+                            onChanged: (value) =>
+                                setStateDialog(() => selectedYear = value!),
                           ),
                         ),
                       ],
@@ -145,19 +147,20 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                   child: const Text('បោះបង់'),
                 ),
-                FilledButton(
+                FilledButton.icon(
                   onPressed: () {
                     final name = nameController.text.trim();
-                    final maxPts = double.tryParse(
+                    final maxPoints = double.tryParse(
                       maxPointsController.text.trim(),
                     );
+
                     if (selectedSubjectId != null &&
                         name.isNotEmpty &&
-                        maxPts != null &&
-                        maxPts > 0) {
+                        maxPoints != null &&
+                        maxPoints > 0) {
                       ref
                           .read(assignmentNotifierProvider.notifier)
                           .addAssignment(
@@ -166,20 +169,21 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
                             name,
                             selectedMonth,
                             selectedYear,
-                            maxPts,
+                            maxPoints,
                           );
-                      Navigator.of(context).pop();
+                      Navigator.of(dialogContext).pop();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            'សូមជ្រើសមុខវិជ្ជា បញ្ចូលឈ្មោះត្រឹមត្រូវ និងពិន្ទុអតិបរមា',
+                            'សូមជ្រើសមុខវិជ្ជា បញ្ចូលឈ្មោះកិច្ចការ និងពិន្ទុអតិបរមាឱ្យត្រឹមត្រូវ។',
                           ),
                         ),
                       );
                     }
                   },
-                  child: const Text('បន្ថែម'),
+                  icon: const Icon(Icons.add_task_outlined),
+                  label: const Text('បន្ថែមកិច្ចការ'),
                 ),
               ],
             );
@@ -195,24 +199,34 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'assignments_fab',
+        onPressed: () => _showAddAssignmentDialog(context, ref),
+        icon: const Icon(Icons.add_task_outlined),
+        label: const Text('បន្ថែមកិច្ចការ'),
+      ),
       body: assignmentsState.when(
         data: (assignments) {
           if (assignments.isEmpty) {
             return Center(
-              child: Text(
-                'មិនទាន់មានកិច្ចការ។\nចុចបន្ថែមខាងក្រោមដើម្បីបង្កើត។',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.paddingLg),
+                child: Text(
+                  'មិនទាន់មានកិច្ចការទេ។ ចុចប៊ូតុង "បន្ថែមកិច្ចការ" ដើម្បីបង្កើត។',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             );
           }
 
-          return ListView.builder(
+          return ListView.separated(
             padding: const EdgeInsets.all(AppSizes.paddingMd),
             itemCount: assignments.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSizes.paddingMd),
             itemBuilder: (context, index) {
               final assignment = assignments[index];
               return AssignmentListTileWidget(
@@ -231,16 +245,10 @@ class _AssignmentsTabWidgetState extends ConsumerState<AssignmentsTabWidget> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
           child: Text(
-            'កំហុស៖ $error',
-            style: TextStyle(color: AppColors.danger),
+            'មានបញ្ហាពេលផ្ទុកកិច្ចការ: $error',
+            style: const TextStyle(color: AppColors.danger),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'assignments_fab',
-        onPressed: () => _showAddAssignmentDialog(context, ref),
-        tooltip: 'បន្ថែមកិច្ចការ',
-        child: const Icon(Icons.add),
       ),
     );
   }

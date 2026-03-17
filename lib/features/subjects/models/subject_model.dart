@@ -1,6 +1,6 @@
 class SubjectModel {
-  final int? id;
-  final int classId;
+  final String? id;
+  final String classId;
   final String name;
   final int? displayOrder;
 
@@ -11,27 +11,25 @@ class SubjectModel {
     this.displayOrder,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'class_id': classId,
-      'name': name,
-      'display_order': displayOrder,
-    };
+  Map<String, dynamic> toDto() {
+    return {'class_id': classId, 'name': name, 'display_order': displayOrder};
   }
 
-  factory SubjectModel.fromMap(Map<String, dynamic> map) {
+  factory SubjectModel.fromDto(Map<dynamic, dynamic> map, String id) {
+    final rawDisplayOrder = map['display_order'];
     return SubjectModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      classId: map['class_id'] as int,
-      name: map['name'] ?? '',
-      displayOrder: map['display_order'] as int?,
+      id: id,
+      classId: map['class_id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      displayOrder: rawDisplayOrder is int
+          ? rawDisplayOrder
+          : int.tryParse(rawDisplayOrder?.toString() ?? ''),
     );
   }
 
   SubjectModel copyWith({
-    int? id,
-    int? classId,
+    String? id,
+    String? classId,
     String? name,
     int? displayOrder,
   }) {

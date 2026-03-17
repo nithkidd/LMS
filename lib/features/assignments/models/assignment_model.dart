@@ -1,7 +1,7 @@
 class AssignmentModel {
-  final int? id;
-  final int classId;
-  final int subjectId;
+  final String? id;
+  final String classId;
+  final String subjectId;
   final String name;
   final String month;
   final String year;
@@ -17,9 +17,8 @@ class AssignmentModel {
     required this.maxPoints,
   });
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toDto() {
     return {
-      'id': id,
       'class_id': classId,
       'subject_id': subjectId,
       'name': name,
@@ -29,22 +28,24 @@ class AssignmentModel {
     };
   }
 
-  factory AssignmentModel.fromMap(Map<String, dynamic> map) {
+  factory AssignmentModel.fromDto(Map<dynamic, dynamic> map, String id) {
     return AssignmentModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      classId: map['class_id'] as int,
-      subjectId: map['subject_id'] as int,
-      name: map['name'] ?? '',
-      month: map['month'] ?? '',
-      year: map['year'] ?? '',
-      maxPoints: (map['max_points'] as num).toDouble(),
+      id: id,
+      classId: map['class_id']?.toString() ?? '',
+      subjectId: map['subject_id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      month: map['month']?.toString() ?? '',
+      year: map['year']?.toString() ?? '',
+      maxPoints: map['max_points'] is num
+          ? (map['max_points'] as num).toDouble()
+          : double.tryParse(map['max_points']?.toString() ?? '0') ?? 0.0,
     );
   }
 
   AssignmentModel copyWith({
-    int? id,
-    int? classId,
-    int? subjectId,
+    String? id,
+    String? classId,
+    String? subjectId,
     String? name,
     String? month,
     String? year,

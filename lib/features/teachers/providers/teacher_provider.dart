@@ -8,14 +8,14 @@ final teacherRepositoryProvider = Provider<TeacherRepository>((ref) {
 });
 
 class TeacherNotifier extends AsyncNotifier<List<TeacherModel>> {
-  int? _currentSchoolId;
+  String? _currentSchoolId;
 
   @override
   FutureOr<List<TeacherModel>> build() async {
     return [];
   }
 
-  Future<void> loadTeachersForSchool(int schoolId) async {
+  Future<void> loadTeachersForSchool(String schoolId) async {
     _currentSchoolId = schoolId;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -24,12 +24,16 @@ class TeacherNotifier extends AsyncNotifier<List<TeacherModel>> {
     });
   }
 
-  Future<void> addTeacher(int schoolId, String name) async {
+  Future<void> addTeacher(String schoolId, String name) async {
     if (_currentSchoolId == null) return;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(teacherRepositoryProvider);
-      final newTeacher = TeacherModel(schoolId: schoolId, name: name);
+      final newTeacher = TeacherModel(
+        schoolId: schoolId,
+        name: name,
+        createdAt: DateTime.now().toIso8601String(),
+      );
       await repository.insert(newTeacher);
       return await repository.getTeachersBySchoolId(_currentSchoolId!);
     });
@@ -45,7 +49,7 @@ class TeacherNotifier extends AsyncNotifier<List<TeacherModel>> {
     });
   }
 
-  Future<void> deleteTeacher(int id) async {
+  Future<void> deleteTeacher(String id) async {
     if (_currentSchoolId == null) return;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {

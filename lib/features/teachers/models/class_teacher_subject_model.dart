@@ -2,10 +2,10 @@ import '../../teachers/models/teacher_model.dart';
 import '../../subjects/models/subject_model.dart';
 
 class ClassTeacherSubjectModel {
-  final int? id;
-  final int classId;
-  final int teacherId;
-  final int subjectId;
+  final String? id;
+  final String classId;
+  final String teacherId;
+  final String subjectId;
 
   ClassTeacherSubjectModel({
     this.id,
@@ -14,29 +14,31 @@ class ClassTeacherSubjectModel {
     required this.subjectId,
   });
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toDto() {
     return {
-      'id': id,
       'class_id': classId,
       'teacher_id': teacherId,
       'subject_id': subjectId,
     };
   }
 
-  factory ClassTeacherSubjectModel.fromMap(Map<String, dynamic> map) {
+  factory ClassTeacherSubjectModel.fromDto(
+    Map<dynamic, dynamic> map,
+    String id,
+  ) {
     return ClassTeacherSubjectModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      classId: map['class_id'] as int,
-      teacherId: map['teacher_id'] as int,
-      subjectId: map['subject_id'] as int,
+      id: id,
+      classId: map['class_id']?.toString() ?? '',
+      teacherId: map['teacher_id']?.toString() ?? '',
+      subjectId: map['subject_id']?.toString() ?? '',
     );
   }
 
   ClassTeacherSubjectModel copyWith({
-    int? id,
-    int? classId,
-    int? teacherId,
-    int? subjectId,
+    String? id,
+    String? classId,
+    String? teacherId,
+    String? subjectId,
   }) {
     return ClassTeacherSubjectModel(
       id: id ?? this.id,
@@ -55,7 +57,7 @@ class ClassTeacherSubjectModel {
 class ClassTeacherSubjectRow {
   final TeacherModel teacher;
   final SubjectModel subject;
-  final int assignmentId;
+  final String assignmentId;
 
   ClassTeacherSubjectRow({
     required this.teacher,

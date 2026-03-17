@@ -1,26 +1,34 @@
-import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../models/school_model.dart';
 
 class SchoolRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  Future<int> insert(SchoolModel school) async {
-    Database db = await _dbHelper.database;
-    return await db.insert(DatabaseHelper.tableSchools, school.toMap());
+  Future<String> insert(SchoolModel school) async {
+    final db = await _dbHelper.database;
+    final id = await db.insert(DatabaseHelper.tableSchools, school.toDto());
+    return id.toString();
   }
 
   Future<List<SchoolModel>> getAll() async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
-      DatabaseHelper.tableSchools,
-      orderBy: 'display_order DESC, created_at DESC',
-    );
-    return maps.map((map) => SchoolModel.fromMap(map)).toList();
+    final db = await _dbHelper.database;
+    final rows = await db.query(DatabaseHelper.tableSchools);
+
+    final schools = rows
+        .map((row) => SchoolModel.fromDto(row, row['id'].toString()))
+        .toList();
+
+    schools.sort((a, b) {
+      final orderCompare = b.displayOrder.compareTo(a.displayOrder);
+      if (orderCompare != 0) return orderCompare;
+      return (b.createdAt ?? '').compareTo(a.createdAt ?? '');
+    });
+
+    return schools;
   }
 
-  Future<void> updateDisplayOrder(int id, int displayOrder) async {
-    Database db = await _dbHelper.database;
+  Future<void> updateDisplayOrder(String id, int displayOrder) async {
+    final db = await _dbHelper.database;
     await db.update(
       DatabaseHelper.tableSchools,
       {'display_order': displayOrder},
@@ -29,33 +37,33 @@ class SchoolRepository {
     );
   }
 
-  Future<SchoolModel?> getById(int id) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<SchoolModel?> getById(String id) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableSchools,
       where: 'id = ?',
       whereArgs: [id],
+      limit: 1,
     );
-    if (maps.isNotEmpty) {
-      return SchoolModel.fromMap(maps.first);
-    }
-    return null;
+    if (rows.isEmpty) return null;
+    return SchoolModel.fromDto(rows.first, rows.first['id'].toString());
   }
 
-  Future<int> update(SchoolModel school) async {
-    Database db = await _dbHelper.database;
-    return await db.update(
+  Future<void> update(SchoolModel school) async {
+    if (school.id == null) return;
+
+    final db = await _dbHelper.database;
+    await db.update(
       DatabaseHelper.tableSchools,
-      school.toMap(),
+      school.toDto(),
       where: 'id = ?',
       whereArgs: [school.id],
     );
   }
 
-  Future<int> delete(int id) async {
-    Database db = await _dbHelper.database;
-    // Cascading delete handles associated classes, students, and scores automatically
-    return await db.delete(
+  Future<void> delete(String id) async {
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableSchools,
       where: 'id = ?',
       whereArgs: [id],

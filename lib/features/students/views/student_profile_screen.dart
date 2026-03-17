@@ -5,7 +5,7 @@ import '../widgets/grade_banner.dart';
 import '../widgets/assignment_score_card.dart';
 
 class StudentProfileScreen extends ConsumerStatefulWidget {
-  final int studentId;
+  final String studentId;
   final String studentName;
 
   const StudentProfileScreen({

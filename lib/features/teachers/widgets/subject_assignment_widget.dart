@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/teacher_provider.dart';
-import '../providers/class_teacher_subject_provider.dart';
+
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/functional_minimalism_widgets.dart';
 import '../../subjects/providers/subject_provider.dart';
+import '../providers/class_teacher_subject_provider.dart';
+import '../providers/teacher_provider.dart';
 
 class SubjectAssignmentWidget extends ConsumerStatefulWidget {
-  final int classId;
-  final int? schoolId;
+  final String classId;
+  final String? schoolId;
 
   const SubjectAssignmentWidget({
     super.key,
@@ -46,132 +49,121 @@ class _SubjectAssignmentWidgetState
 
     final teachers = teachersState.value ?? [];
     final subjects = subjectsState.value ?? [];
-
-    int? selectedTeacherId;
-    int? selectedSubjectId;
+    String? selectedTeacherId;
+    String? selectedSubjectId;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text(
-              'ចាត់តែងអ្នកបង្រៀនចំពោះមុខវិជ្ជា',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+          builder: (context, setStateDialog) => AlertDialog(
+            title: const Text('ចាត់តាំងគ្រូសម្រាប់មុខវិជ្ជា'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 8),
-                  Text(
-                    'រើសយក្សរាង្គ',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedTeacherId,
+                    decoration: const InputDecoration(
+                      labelText: 'ជ្រើសគ្រូ',
                     ),
+                    items: teachers
+                        .map(
+                          (teacher) => DropdownMenuItem(
+                            value: teacher.id.toString(),
+                            child: Text(teacher.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setStateDialog(() => selectedTeacherId = value),
                   ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: AppSizes.paddingMd),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedSubjectId,
+                    decoration: const InputDecoration(
+                      labelText: 'ជ្រើសមុខវិជ្ជា',
                     ),
-                    child: DropdownButton<int>(
-                      hint: const Text('ជ្រើសរើសអ្នកបង្រៀន...'),
-                      value: selectedTeacherId,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      items: teachers
-                          .map(
-                            (t) => DropdownMenuItem(
-                              value: t.id,
-                              child: Text(t.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) {
-                        setState(() => selectedTeacherId = val);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'រើសមុខវិជ្ជា',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButton<int>(
-                      hint: const Text('ជ្រើសរើសមុខវិជ្ជា...'),
-                      value: selectedSubjectId,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      items: subjects
-                          .map(
-                            (s) => DropdownMenuItem(
-                              value: s.id,
-                              child: Text(s.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) {
-                        setState(() => selectedSubjectId = val);
-                      },
-                    ),
+                    items: subjects
+                        .map(
+                          (subject) => DropdownMenuItem(
+                            value: subject.id.toString(),
+                            child: Text(subject.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setStateDialog(() => selectedSubjectId = value),
                   ),
                 ],
               ),
             ),
             actions: [
-              const Divider(height: 1),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('បោះបង់'),
-                  ),
-                  const SizedBox(width: 10),
-                  FilledButton(
-                    onPressed:
-                        selectedTeacherId != null && selectedSubjectId != null
-                        ? () {
-                            ref
-                                .read(
-                                  classTeacherSubjectNotifierProvider.notifier,
-                                )
-                                .assignSubjectToTeacher(
-                                  classId: widget.classId,
-                                  teacherId: selectedTeacherId!,
-                                  subjectId: selectedSubjectId!,
-                                );
-                            Navigator.pop(context);
-                          }
-                        : null,
-                    child: const Text('ចាត់តែង'),
-                  ),
-                ],
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('បោះបង់'),
+              ),
+              FilledButton.icon(
+                onPressed:
+                    selectedTeacherId != null && selectedSubjectId != null
+                    ? () {
+                        ref
+                            .read(
+                              classTeacherSubjectNotifierProvider.notifier,
+                            )
+                            .assignSubjectToTeacher(
+                              classId: widget.classId,
+                              teacherId: selectedTeacherId!,
+                              subjectId: selectedSubjectId!,
+                            );
+                        Navigator.pop(dialogContext);
+                      }
+                    : null,
+                icon: const Icon(Icons.assignment_ind_outlined),
+                label: const Text('ចាត់តាំង'),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  void _showDeleteDialog({
+    required String teacherId,
+    required String subjectId,
+    required String teacherName,
+    required String subjectName,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('លុបការចាត់តាំង'),
+        content: Text(
+          'តើអ្នកចង់ដក "$teacherName" ចេញពីមុខវិជ្ជា "$subjectName" មែនទេ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('បោះបង់'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () {
+              ref
+                  .read(classTeacherSubjectNotifierProvider.notifier)
+                  .unassignSubjectFromTeacher(
+                    classId: widget.classId,
+                    teacherId: teacherId,
+                    subjectId: subjectId,
+                  );
+              Navigator.pop(dialogContext);
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('លុបការចាត់តាំង'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -183,118 +175,82 @@ class _SubjectAssignmentWidgetState
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('ចាត់តែងអ្នកបង្រៀនចំពោះមុខវិជ្ជា'),
-        elevation: 1,
+      appBar: AppBar(title: const Text('ចាត់តាំងគ្រូសម្រាប់មុខវិជ្ជា')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAssignmentDialog,
+        icon: const Icon(Icons.assignment_ind_outlined),
+        label: const Text('ចាត់តាំងគ្រូ'),
       ),
       body: assignmentsState.when(
         data: (assignments) {
           if (assignments.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.assignment_ind_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.paddingLg),
+                child: Text(
+                  'មិនទាន់មានការចាត់តាំងគ្រូទេ។ ចុចប៊ូតុង "ចាត់តាំងគ្រូ" ដើម្បីបង្កើត។',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'មិនមានការចាត់តែង',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: _showAssignmentDialog,
-                    icon: const Icon(Icons.add),
-                    label: const Text('បន្ថែមការចាត់តែង'),
-                  ),
-                ],
+                ),
               ),
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
+          return ListView.separated(
+            padding: const EdgeInsets.all(AppSizes.paddingMd),
             itemCount: assignments.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSizes.paddingMd),
             itemBuilder: (context, index) {
               final assignment = assignments[index];
-              return Card(
-                elevation: 1,
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  title: Text(
-                    assignment.subject.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    assignment.teacher.name,
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: Colors.red.shade400,
+
+              return TrellisSectionSurface(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(assignment.subject.name, style: AppTextStyles.subheading),
+                    const SizedBox(height: AppSizes.paddingSm),
+                    Text(
+                      'គ្រូដែលបានចាត់តាំង: ${assignment.teacher.name}',
+                      style: AppTextStyles.body,
                     ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('លុបការចាត់តែង'),
-                          content: const Text(
-                            'តើ​អ្នក​ប្រាកដ​ថា​ចង់​លុប​ការ​ចាត់​តែង​នេះ​ដែរ​ឬ​ទេ?',
+                    const SizedBox(height: AppSizes.paddingMd),
+                    TrellisCardActions(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _showDeleteDialog(
+                            teacherId: assignment.teacher.id!,
+                            subjectId: assignment.subject.id!,
+                            teacherName: assignment.teacher.name,
+                            subjectName: assignment.subject.name,
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('ដោះស្រាយ'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            side: const BorderSide(
+                              color: AppColors.danger,
+                              width: 1.2,
                             ),
-                            FilledButton(
-                              onPressed: () {
-                                ref
-                                    .read(
-                                      classTeacherSubjectNotifierProvider
-                                          .notifier,
-                                    )
-                                    .unassignSubjectFromTeacher(
-                                      classId: widget.classId,
-                                      teacherId: assignment.teacher.id!,
-                                      subjectId: assignment.subject.id!,
-                                    );
-                                Navigator.pop(ctx);
-                              },
-                              child: const Text('លុប'),
-                            ),
-                          ],
+                          ),
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('លុបការចាត់តាំង'),
                         ),
-                      );
-                    },
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
               );
             },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, st) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: Colors.red.shade400, size: 48),
-              const SizedBox(height: 16),
-              Text('ត្រូវកំហុស: $err'),
-            ],
+        error: (error, stack) => Center(
+          child: Text(
+            'មានបញ្ហាពេលផ្ទុកការចាត់តាំង: $error',
+            style: const TextStyle(color: AppColors.danger),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAssignmentDialog,
-        child: const Icon(Icons.add),
       ),
     );
   }

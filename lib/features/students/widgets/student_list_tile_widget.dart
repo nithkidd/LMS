@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/functional_minimalism_widgets.dart';
 import '../models/student_model.dart';
 import '../providers/student_provider.dart';
-import '../views/student_profile_screen.dart';
 import '../views/student_details_screen.dart';
+import '../views/student_profile_screen.dart';
 import 'student_form_dialog.dart';
-import '../../../core/theme/app_theme.dart';
 
 class StudentListTileWidget extends ConsumerWidget {
   final StudentModel student;
   final VoidCallback? onDelete;
 
-  const StudentListTileWidget({super.key, required this.student, this.onDelete});
+  const StudentListTileWidget({
+    super.key,
+    required this.student,
+    this.onDelete,
+  });
 
-  void _showEditDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showEditDialog(BuildContext context, WidgetRef ref) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) =>
@@ -39,20 +45,21 @@ class StudentListTileWidget extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('លុបសិស្សចេញ?'),
-        content: Text('លុប "${student.name}" ចេញពីថ្នាក់នេះមែនទេ?'),
+        title: const Text('លុបសិស្ស'),
+        content: Text('តើអ្នកចង់លុប "${student.name}" ចេញពីថ្នាក់នេះមែនទេ?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('បោះបង់'),
           ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () {
-              onDelete!();
+              onDelete?.call();
               Navigator.pop(ctx);
             },
-            child: const Text('លុប'),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('លុបសិស្ស'),
           ),
         ],
       ),
@@ -60,127 +67,134 @@ class StudentListTileWidget extends ConsumerWidget {
   }
 
   void _openProfile(BuildContext context) {
-    if (student.id != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StudentProfileScreen(
-            studentId: student.id!,
-            studentName: student.name,
-          ),
+    if (student.id == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentProfileScreen(
+          studentId: student.id!,
+          studentName: student.name,
         ),
-      );
-    }
+      ),
+    );
   }
 
   void _openDetails(BuildContext context) {
-    if (student.id != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StudentDetailsScreen(student: student),
-        ),
-      );
+    if (student.id == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentDetailsScreen(student: student),
+      ),
+    );
+  }
+
+  String _buildStudentSummary() {
+    final parts = <String>[];
+    if ((student.sex ?? '').isNotEmpty) {
+      parts.add('ភេទ ${student.sex}');
+    }
+    if ((student.dateOfBirth ?? '').isNotEmpty) {
+      parts.add('ថ្ងៃខែឆ្នាំកំណើត ${student.dateOfBirth}');
+    }
+    return parts.isEmpty
+        ? 'ចុចប៊ូតុងខាងក្រោមដើម្បីមើលព័ត៌មានបន្ថែម។'
+        : parts.join(' • ');
+  }
+
+  String _studentBadgeLabel() {
+    switch ((student.sex ?? '').toUpperCase()) {
+      case 'F':
+        return 'សិស្សស្រី';
+      case 'M':
+        return 'សិស្សប្រុស';
+      default:
+        return 'សិស្ស';
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        onTap: () => _openDetails(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              radius: 24,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                student.name.substring(0, 1).toUpperCase(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ),
-            title: Text(student.name, style: AppTextStyles.subheading),
-            trailing: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-              onSelected: (value) {
-                if (value == 'details') _openDetails(context);
-                if (value == 'profile') _openProfile(context);
-                if (value == 'edit') _showEditDialog(context, ref);
-                if (value == 'remove' && onDelete != null) {
-                  _showDeleteDialog(context);
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem<String>(
-                  value: 'details',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: AppSizes.iconMd,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text('មើលព័ត៌មានលម្អិត'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.assessment_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: AppSizes.iconMd,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text('មើលពិន្ទុ'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.edit_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: AppSizes.iconMd,
-                      ),
-                      SizedBox(width: 8),
-                      Text('កែប្រែ'),
-                    ],
-                  ),
-                ),
-                if (onDelete != null)
-                  const PopupMenuItem<String>(
-                    value: 'remove',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          color: AppColors.danger,
-                          size: AppSizes.iconMd,
-                        ),
-                        SizedBox(width: 8),
-                        Text('លុប', style: TextStyle(color: AppColors.danger)),
-                      ],
+    final accent = TrellisAccentPalette.person(student.name, sex: student.sex);
+
+    return TrellisSectionSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TrellisAvatar(name: student.name, sex: student.sex, radius: 26),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(student.name, style: AppTextStyles.subheading),
+                    const SizedBox(height: 6),
+                    Text(
+                      _buildStudentSummary(),
+                      style: AppTextStyles.caption.copyWith(height: 1.5),
                     ),
-                  ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: AppSizes.paddingMd),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              TrellisInfoBadge(
+                label: _studentBadgeLabel(),
+                accent: accent,
+                icon: Icons.person_rounded,
+              ),
+              if ((student.dateOfBirth ?? '').isNotEmpty)
+                TrellisInfoBadge(
+                  label: student.dateOfBirth!,
+                  accent: TrellisAccentPalette.bySeed(
+                    student.dateOfBirth!,
+                    fallbackIcon: Icons.cake_rounded,
+                  ),
+                  icon: Icons.cake_rounded,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.paddingMd),
+          TrellisCardActions(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _openDetails(context),
+                icon: const Icon(Icons.person_outline),
+                label: const Text('មើលព័ត៌មាន'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openProfile(context),
+                icon: const Icon(Icons.assessment_outlined),
+                label: const Text('មើលពិន្ទុ'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showEditDialog(context, ref),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('កែប្រែ'),
+              ),
+              if (onDelete != null)
+                OutlinedButton.icon(
+                  onPressed: () => _showDeleteDialog(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(color: AppColors.danger, width: 1.2),
+                  ),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('លុប'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

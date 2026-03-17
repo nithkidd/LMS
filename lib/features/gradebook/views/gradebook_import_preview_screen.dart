@@ -196,10 +196,7 @@ class _GradebookImportPreviewScreenState
               ),
             ),
             subtitle: existsAlready
-                ? const Text(
-                    'មានរួចហើយ',
-                    style: TextStyle(color: Colors.orange),
-                  )
+                ? Text('មានរួចហើយ', style: TextStyle(color: AppColors.primary))
                 : null,
           ),
         );

@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/khmer_collator.dart';
 import '../models/teacher_model.dart';
@@ -6,54 +5,55 @@ import '../models/teacher_model.dart';
 class TeacherRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  Future<int> insert(TeacherModel teacher) async {
-    Database db = await _dbHelper.database;
-    return await db.insert(DatabaseHelper.tableTeachers, teacher.toMap());
+  Future<String> insert(TeacherModel teacher) async {
+    final db = await _dbHelper.database;
+    final id = await db.insert(DatabaseHelper.tableTeachers, teacher.toDto());
+    return id.toString();
   }
 
-  Future<List<TeacherModel>> getTeachersBySchoolId(int schoolId) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<List<TeacherModel>> getTeachersBySchoolId(String schoolId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableTeachers,
       where: 'school_id = ?',
       whereArgs: [schoolId],
     );
-    List<TeacherModel> teachers = maps
-        .map((map) => TeacherModel.fromMap(map))
+
+    final teachers = rows
+        .map((row) => TeacherModel.fromDto(row, row['id'].toString()))
         .toList();
 
-    // Sort by Khmer alphabetical order
-    KhmerCollator.sortBy(teachers, (t) => t.name);
-
+    KhmerCollator.sortBy(teachers, (teacher) => teacher.name);
     return teachers;
   }
 
-  Future<TeacherModel?> getById(int id) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<TeacherModel?> getById(String id) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableTeachers,
       where: 'id = ?',
       whereArgs: [id],
+      limit: 1,
     );
-    if (maps.isNotEmpty) {
-      return TeacherModel.fromMap(maps.first);
-    }
-    return null;
+    if (rows.isEmpty) return null;
+    return TeacherModel.fromDto(rows.first, rows.first['id'].toString());
   }
 
-  Future<int> update(TeacherModel teacher) async {
-    Database db = await _dbHelper.database;
-    return await db.update(
+  Future<void> update(TeacherModel teacher) async {
+    if (teacher.id == null) return;
+
+    final db = await _dbHelper.database;
+    await db.update(
       DatabaseHelper.tableTeachers,
-      teacher.toMap(),
+      teacher.toDto(),
       where: 'id = ?',
       whereArgs: [teacher.id],
     );
   }
 
-  Future<int> delete(int id) async {
-    Database db = await _dbHelper.database;
-    return await db.delete(
+  Future<void> delete(String id) async {
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableTeachers,
       where: 'id = ?',
       whereArgs: [id],

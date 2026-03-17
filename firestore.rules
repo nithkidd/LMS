@@ -1,0 +1,219 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function activeToken() {
+      return signedIn() && request.auth.token.isActive == true;
+    }
+
+    function isSuperadmin() {
+      return activeToken() && request.auth.token.role == 'superadmin';
+    }
+
+    function isOrganizationAdmin() {
+      return activeToken() && request.auth.token.role == 'org_admin';
+    }
+
+    function isTeacher() {
+      return activeToken() && request.auth.token.role == 'teacher';
+    }
+
+    function organizationId() {
+      return request.auth.token.organizationId;
+    }
+
+    function organizationDocument(orgId) {
+      return get(/databases/$(database)/documents/organizations/$(orgId));
+    }
+
+    function activeOrganization(orgId) {
+      return orgId != null &&
+          organizationDocument(orgId).exists() &&
+          organizationDocument(orgId).data.isActive == true;
+    }
+
+    function schoolId() {
+      return request.auth.token.schoolId;
+    }
+
+    function teacherScopeId() {
+      return request.auth.token.teacherId;
+    }
+
+    function sameOrganization(orgId) {
+      return orgId != null && organizationId() != null && orgId == organizationId();
+    }
+
+    function sameSchool(scopeSchoolId) {
+      return scopeSchoolId != null && schoolId() != null && scopeSchoolId == schoolId();
+    }
+
+    function sameTeacherOwner(ownerTeacherId) {
+      return ownerTeacherId != null &&
+          (ownerTeacherId == request.auth.uid ||
+              (teacherScopeId() != null && ownerTeacherId == teacherScopeId()));
+    }
+
+    function manageableOrgRole(role) {
+      return role == 'org_admin' || role == 'teacher';
+    }
+
+    function organizationFieldCompatible(orgId) {
+      return orgId == null || sameOrganization(orgId);
+    }
+
+    function classDocument(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId));
+    }
+
+    function classExists(classId) {
+      return classDocument(classId).exists();
+    }
+
+    function canAccessLinkedClass(classId) {
+      return classExists(classId) &&
+          (isSuperadmin() ||
+              (isOrganizationAdmin() &&
+                  sameOrganization(classDocument(classId).data.organizationId)) ||
+              (isTeacher() &&
+                  sameTeacherOwner(classDocument(classId).data.teacherId)));
+    }
+
+    match /organizations/{orgId} {
+      allow read: if activeOrganization(orgId) ||
+          isSuperadmin() ||
+          (activeToken() && sameOrganization(orgId));
+      allow write: if isSuperadmin();
+    }
+
+    match /schools/{schoolDocumentId} {
+      allow read: if isSuperadmin() || (activeToken() && sameSchool(schoolDocumentId));
+      allow write: if isSuperadmin();
+    }
+
+    match /user_profiles/{uid} {
+      // Let a signed-in user read their own profile even before custom claims
+      // have fully propagated. All elevated cross-user access still requires an
+      // active token with the expected role claims.
+      allow read: if (signedIn() && request.auth.uid == uid) ||
+          (activeToken() &&
+              (isSuperadmin() ||
+                  (isOrganizationAdmin() &&
+                      sameOrganization(resource.data.organizationId))));
+
+      allow create: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(request.resource.data.organizationId) &&
+              manageableOrgRole(request.resource.data.role)) ||
+          (signedIn() &&
+              request.auth.uid == uid &&
+              request.resource.data.role == 'teacher' &&
+              request.resource.data.isActive == false &&
+              request.resource.data.teacherId == null &&
+              request.resource.data.email == request.auth.token.email &&
+              activeOrganization(request.resource.data.organizationId));
+
+      allow update: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId) &&
+              sameOrganization(request.resource.data.organizationId) &&
+              manageableOrgRole(resource.data.role) &&
+              manageableOrgRole(request.resource.data.role));
+
+      allow delete: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId) &&
+              manageableOrgRole(resource.data.role));
+    }
+
+    match /folders/{folderId} {
+      allow read: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId)) ||
+          (isTeacher() && sameTeacherOwner(resource.data.teacherId));
+
+      allow create: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(request.resource.data.organizationId)) ||
+          (isTeacher() &&
+              sameTeacherOwner(request.resource.data.teacherId) &&
+              organizationFieldCompatible(request.resource.data.organizationId));
+
+      allow update: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId) &&
+              sameOrganization(request.resource.data.organizationId)) ||
+          (isTeacher() &&
+              sameTeacherOwner(resource.data.teacherId) &&
+              sameTeacherOwner(request.resource.data.teacherId) &&
+              organizationFieldCompatible(request.resource.data.organizationId));
+
+      allow delete: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId)) ||
+          (isTeacher() && sameTeacherOwner(resource.data.teacherId));
+    }
+
+    match /classes/{classId} {
+      allow read: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId)) ||
+          (isTeacher() && sameTeacherOwner(resource.data.teacherId));
+
+      allow create: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(request.resource.data.organizationId)) ||
+          (isTeacher() &&
+              sameTeacherOwner(request.resource.data.teacherId) &&
+              organizationFieldCompatible(request.resource.data.organizationId));
+
+      allow update: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId) &&
+              sameOrganization(request.resource.data.organizationId)) ||
+          (isTeacher() &&
+              sameTeacherOwner(resource.data.teacherId) &&
+              sameTeacherOwner(request.resource.data.teacherId) &&
+              organizationFieldCompatible(request.resource.data.organizationId));
+
+      allow delete: if isSuperadmin() ||
+          (isOrganizationAdmin() &&
+              sameOrganization(resource.data.organizationId)) ||
+          (isTeacher() && sameTeacherOwner(resource.data.teacherId));
+    }
+
+    match /assessments/{assessmentId} {
+      allow read: if canAccessLinkedClass(resource.data.classId);
+
+      allow create: if canAccessLinkedClass(request.resource.data.classId);
+
+      allow update: if canAccessLinkedClass(resource.data.classId) &&
+          canAccessLinkedClass(request.resource.data.classId);
+
+      allow delete: if canAccessLinkedClass(resource.data.classId);
+    }
+
+    match /grades/{gradeId} {
+      allow read: if canAccessLinkedClass(resource.data.classId);
+
+      allow create: if canAccessLinkedClass(request.resource.data.classId);
+
+      allow update: if canAccessLinkedClass(resource.data.classId) &&
+          canAccessLinkedClass(request.resource.data.classId);
+
+      allow delete: if canAccessLinkedClass(resource.data.classId);
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if isSuperadmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

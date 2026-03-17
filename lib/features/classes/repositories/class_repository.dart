@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/khmer_collator.dart';
 import '../models/class_model.dart';
@@ -6,56 +5,89 @@ import '../models/class_model.dart';
 class ClassRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  Future<int> insert(ClassModel classModel) async {
-    Database db = await _dbHelper.database;
-    return await db.insert(DatabaseHelper.tableClasses, classModel.toMap());
+  Future<String> insert(ClassModel classModel) async {
+    final db = await _dbHelper.database;
+    final data = classModel.toDto()
+      ..['is_adviser'] = classModel.isAdviser ? 1 : 0;
+    final id = await db.insert(DatabaseHelper.tableClasses, data);
+    return id.toString();
   }
 
-  Future<List<ClassModel>> getClassesBySchoolId(int schoolId) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
-      DatabaseHelper.tableClasses,
-      where: 'school_id = ?',
-      whereArgs: [schoolId],
+  Future<List<ClassModel>> getClassesBySchoolId(String schoolId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        c.*,
+        COUNT(s.id) AS total_students,
+        SUM(CASE WHEN s.sex = 'F' THEN 1 ELSE 0 END) AS female_students
+      FROM ${DatabaseHelper.tableClasses} c
+      LEFT JOIN ${DatabaseHelper.tableStudents} s
+        ON s.class_id = c.id
+      WHERE c.school_id = ?
+      GROUP BY c.id
+      ''',
+      [schoolId],
     );
-    List<ClassModel> classes = maps
-        .map((map) => ClassModel.fromMap(map))
+
+    final classes = rows
+        .map((row) => ClassModel.fromDto(row, row['id'].toString()))
         .toList();
 
-    // Sort by Khmer alphabetical order
-    KhmerCollator.sortBy(classes, (c) => c.name);
-
+    KhmerCollator.sortBy(classes, (classModel) => classModel.name);
     return classes;
   }
 
-  Future<ClassModel?> getById(int id) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<List<ClassModel>> getAllClasses() async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery('''
+      SELECT
+        c.*,
+        COUNT(s.id) AS total_students,
+        SUM(CASE WHEN s.sex = 'F' THEN 1 ELSE 0 END) AS female_students
+      FROM ${DatabaseHelper.tableClasses} c
+      LEFT JOIN ${DatabaseHelper.tableStudents} s
+        ON s.class_id = c.id
+      GROUP BY c.id
+    ''');
+
+    final classes = rows
+        .map((row) => ClassModel.fromDto(row, row['id'].toString()))
+        .toList();
+
+    KhmerCollator.sortBy(classes, (classModel) => classModel.name);
+    return classes;
+  }
+
+  Future<ClassModel?> getById(String id) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableClasses,
       where: 'id = ?',
       whereArgs: [id],
+      limit: 1,
     );
-    if (maps.isNotEmpty) {
-      return ClassModel.fromMap(maps.first);
-    }
-    return null;
+    if (rows.isEmpty) return null;
+    return ClassModel.fromDto(rows.first, rows.first['id'].toString());
   }
 
-  Future<int> update(ClassModel classModel) async {
-    Database db = await _dbHelper.database;
-    return await db.update(
+  Future<void> update(ClassModel classModel) async {
+    if (classModel.id == null) return;
+
+    final db = await _dbHelper.database;
+    final data = classModel.toDto()
+      ..['is_adviser'] = classModel.isAdviser ? 1 : 0;
+    await db.update(
       DatabaseHelper.tableClasses,
-      classModel.toMap(),
+      data,
       where: 'id = ?',
       whereArgs: [classModel.id],
     );
   }
 
-  Future<int> delete(int id) async {
-    Database db = await _dbHelper.database;
-    // Cascading delete handles associated students and scores automatically
-    // due to PRAGMA foreign_keys = ON in database_helper.dart
-    return await db.delete(
+  Future<void> delete(String id) async {
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableClasses,
       where: 'id = ?',
       whereArgs: [id],

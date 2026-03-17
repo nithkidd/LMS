@@ -4,7 +4,7 @@ import '../models/student_model.dart';
 
 class StudentFormDialog extends StatefulWidget {
   final StudentModel? student; // null means adding new student
-  final int classId;
+  final String classId;
 
   const StudentFormDialog({super.key, this.student, required this.classId});
 
@@ -126,20 +126,30 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Sex dropdown
+                  // Sex dropdown (required)
                   DropdownButtonFormField<String>(
                     initialValue: _sex,
                     decoration: const InputDecoration(
-                      labelText: 'ភេទ',
+                      labelText: 'ភេទ *',
+                      hintText: 'ជ្រើសរើសភេទ',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'M', child: Text('ប្រុស (Male)')),
-                      DropdownMenuItem(
+                      DropdownMenuItem<String>(
+                        value: 'M',
+                        child: Text('ប្រុស (Male)'),
+                      ),
+                      DropdownMenuItem<String>(
                         value: 'F',
                         child: Text('ស្រី (Female)'),
                       ),
                     ],
+                    validator: (value) {
+                      if (value != 'M' && value != 'F') {
+                        return 'សូមជ្រើសរើសភេទ';
+                      }
+                      return null;
+                    },
                     onChanged: (value) {
                       setState(() {
                         _sex = value;

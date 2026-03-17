@@ -10,7 +10,7 @@ final classTeacherSubjectRepositoryProvider =
 
 /// Get all subjects assigned to a specific teacher in a specific class
 final teacherSubjectsProvider =
-    FutureProvider.family<List<int>, (int classId, int teacherId)>((
+    FutureProvider.family<List<String>, (String classId, String teacherId)>((
       ref,
       params,
     ) async {
@@ -24,7 +24,7 @@ final teacherSubjectsProvider =
 
 /// Get all subjects with their assigned teachers for a class
 final classSubjectTeachersProvider =
-    FutureProvider.family<List<ClassTeacherSubjectRow>, int>((
+    FutureProvider.family<List<ClassTeacherSubjectRow>, String>((
       ref,
       classId,
     ) async {
@@ -34,8 +34,8 @@ final classSubjectTeachersProvider =
 
 class ClassTeacherSubjectNotifier
     extends AsyncNotifier<List<ClassTeacherSubjectModel>> {
-  int? _currentClassId;
-  int? _currentTeacherId;
+  String? _currentClassId;
+  String? _currentTeacherId;
 
   @override
   FutureOr<List<ClassTeacherSubjectModel>> build() async {
@@ -43,8 +43,8 @@ class ClassTeacherSubjectNotifier
   }
 
   Future<void> loadAssignmentsForTeacherClass({
-    required int classId,
-    required int teacherId,
+    required String classId,
+    required String teacherId,
   }) async {
     _currentClassId = classId;
     _currentTeacherId = teacherId;
@@ -59,9 +59,9 @@ class ClassTeacherSubjectNotifier
   }
 
   Future<void> assignSubjectToTeacher({
-    required int classId,
-    required int teacherId,
-    required int subjectId,
+    required String classId,
+    required String teacherId,
+    required String subjectId,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -85,9 +85,9 @@ class ClassTeacherSubjectNotifier
   }
 
   Future<void> unassignSubjectFromTeacher({
-    required int classId,
-    required int teacherId,
-    required int subjectId,
+    required String classId,
+    required String teacherId,
+    required String subjectId,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {

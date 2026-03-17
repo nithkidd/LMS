@@ -1,0 +1,62 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "schools": {
+      "$schoolId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || auth.token.schoolId === $schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && auth.token.schoolId === $schoolId))",
+        ".validate": "newData.hasChildren(['name'])"
+      }
+    },
+    "classes": {
+      "$classId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('classes/' + $classId + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && newData.child('school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && data.child('school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['school_id', 'name', 'academic_year']) && root.child('schools/' + newData.child('school_id').val()).exists()"
+      }
+    },
+    "subjects": {
+      "$subjectId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('classes/' + root.child('subjects/' + $subjectId + '/class_id').val() + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && root.child('classes/' + newData.child('class_id').val() + '/school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && root.child('classes/' + data.child('class_id').val() + '/school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['class_id', 'name']) && root.child('classes/' + newData.child('class_id').val()).exists()"
+      }
+    },
+    "teachers": {
+      "$teacherId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('teachers/' + $teacherId + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && newData.child('school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && data.child('school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['school_id', 'name']) && root.child('schools/' + newData.child('school_id').val()).exists()"
+      }
+    },
+    "class_teacher_subject": {
+      "$assignmentId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('classes/' + root.child('class_teacher_subject/' + $assignmentId + '/class_id').val() + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && root.child('classes/' + newData.child('class_id').val() + '/school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && root.child('classes/' + data.child('class_id').val() + '/school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['class_id', 'teacher_id', 'subject_id']) && root.child('classes/' + newData.child('class_id').val()).exists() && root.child('teachers/' + newData.child('teacher_id').val()).exists() && root.child('subjects/' + newData.child('subject_id').val()).exists()"
+      }
+    },
+    "students": {
+      "$studentId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('classes/' + root.child('students/' + $studentId + '/class_id').val() + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && root.child('classes/' + newData.child('class_id').val() + '/school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && root.child('classes/' + data.child('class_id').val() + '/school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['class_id', 'name']) && root.child('classes/' + newData.child('class_id').val()).exists()"
+      }
+    },
+    "assignments": {
+      "$assignmentId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('classes/' + root.child('assignments/' + $assignmentId + '/class_id').val() + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && root.child('classes/' + newData.child('class_id').val() + '/school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && root.child('classes/' + data.child('class_id').val() + '/school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['class_id', 'subject_id', 'name', 'month', 'year', 'max_points']) && root.child('classes/' + newData.child('class_id').val()).exists() && root.child('subjects/' + newData.child('subject_id').val()).exists()"
+      }
+    },
+    "scores": {
+      "$scoreId": {
+        ".read": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || root.child('classes/' + root.child('assignments/' + root.child('scores/' + $scoreId + '/assignment_id').val() + '/class_id').val() + '/school_id').val() === auth.token.schoolId)",
+        ".write": "auth != null && auth.token.isActive === true && (auth.token.role === 'superadmin' || (auth.token.role === 'org_admin' && root.child('classes/' + root.child('assignments/' + newData.child('assignment_id').val() + '/class_id').val() + '/school_id').val() === auth.token.schoolId) || (auth.token.role === 'org_admin' && data.exists() && root.child('classes/' + root.child('assignments/' + data.child('assignment_id').val() + '/class_id').val() + '/school_id').val() === auth.token.schoolId))",
+        ".validate": "newData.hasChildren(['student_id', 'assignment_id', 'points_earned']) && root.child('students/' + newData.child('student_id').val()).exists() && root.child('assignments/' + newData.child('assignment_id').val()).exists()"
+      }
+    }
+  }
+}

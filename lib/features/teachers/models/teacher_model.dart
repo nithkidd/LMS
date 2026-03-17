@@ -1,6 +1,6 @@
 class TeacherModel {
-  final int? id;
-  final int schoolId;
+  final String? id;
+  final String schoolId;
   final String name;
   final String? createdAt;
 
@@ -11,27 +11,22 @@ class TeacherModel {
     this.createdAt,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'school_id': schoolId,
-      'name': name,
-      'created_at': createdAt,
-    };
+  Map<String, dynamic> toDto() {
+    return {'school_id': schoolId, 'name': name, 'created_at': createdAt};
   }
 
-  factory TeacherModel.fromMap(Map<String, dynamic> map) {
+  factory TeacherModel.fromDto(Map<dynamic, dynamic> map, String id) {
     return TeacherModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      schoolId: map['school_id'] as int,
-      name: map['name'] ?? '',
-      createdAt: map['created_at'] as String?,
+      id: id,
+      schoolId: map['school_id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      createdAt: map['created_at']?.toString(),
     );
   }
 
   TeacherModel copyWith({
-    int? id,
-    int? schoolId,
+    String? id,
+    String? schoolId,
     String? name,
     String? createdAt,
   }) {
@@ -53,7 +48,7 @@ class TeacherModel {
           name == other.name;
 
   @override
-  int get hashCode => id.hashCode ^ schoolId.hashCode ^ name.hashCode;
+  int get hashCode => id?.hashCode ?? 0 ^ schoolId.hashCode ^ name.hashCode;
 
   @override
   String toString() =>

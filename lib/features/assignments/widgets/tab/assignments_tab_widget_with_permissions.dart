@@ -8,10 +8,10 @@ import '../../../teachers/services/teacher_permission_service.dart';
 import '../tile/assignment_list_tile_widget.dart';
 import '../../data/khmer_months_list.dart';
 
-
 class AssignmentsTabWidgetWithPermissions extends ConsumerStatefulWidget {
-  final int classId;
-  final int? teacherId; // null if viewing as admin, non-null for teacher view
+  final String classId;
+  final String?
+  teacherId; // null if viewing as admin, non-null for teacher view
   final bool isAdviser; // true if teacher is class adviser
 
   const AssignmentsTabWidgetWithPermissions({
@@ -46,7 +46,7 @@ class _AssignmentsTabWidgetWithPermissionsState
     final maxPointsController = TextEditingController(text: '100');
     String selectedMonth = kMonths[DateTime.now().month - 1];
     String selectedYear = DateTime.now().year.toString();
-    int? selectedSubjectId;
+    String? selectedSubjectId;
 
     final subjectsState = ref.watch(subjectNotifierProvider);
     final teacherSubjectsState = widget.teacherId != null
@@ -58,7 +58,8 @@ class _AssignmentsTabWidgetWithPermissionsState
     List<SubjectModel> availableSubjects = [];
     if (subjectsState is AsyncData && teacherSubjectsState is AsyncData) {
       final allSubjects = subjectsState.value ?? [];
-      final taughtSubjectIds = (teacherSubjectsState.value ?? []).cast<int>();
+      final taughtSubjectIds = (teacherSubjectsState.value ?? [])
+          .cast<String>();
 
       // Filter based on permission
       if (widget.teacherId == null) {
@@ -113,7 +114,7 @@ class _AssignmentsTabWidgetWithPermissionsState
                         ),
                       )
                     else ...[
-                      DropdownButtonFormField<int>(
+                      DropdownButtonFormField<String>(
                         initialValue: selectedSubjectId,
                         decoration: const InputDecoration(
                           labelText: 'មុខវិជ្ជា',
@@ -249,7 +250,7 @@ class _AssignmentsTabWidgetWithPermissionsState
           data: (subjects) {
             return teacherSubjectsState.when(
               data: (rawTaughtSubjectIds) {
-                final taughtSubjectIds = rawTaughtSubjectIds.cast<int>();
+                final taughtSubjectIds = rawTaughtSubjectIds.cast<String>();
                 // Filter assignments based on permissions
                 List<dynamic> visibleAssignments = allAssignments;
                 if (widget.teacherId != null && !widget.isAdviser) {
@@ -303,7 +304,7 @@ class _AssignmentsTabWidgetWithPermissionsState
                         widget.teacherId == null ||
                         TeacherPermissionService.canDeleteAssignment(
                           assignmentSubjectId: assignment.subjectId,
-                          taughtSubjectIds: rawTaughtSubjectIds.cast<int>(),
+                          taughtSubjectIds: rawTaughtSubjectIds.cast<String>(),
                         );
 
                     return AssignmentListTileWidget(

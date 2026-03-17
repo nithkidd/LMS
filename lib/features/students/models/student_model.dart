@@ -1,6 +1,6 @@
 class StudentModel {
-  final int? id;
-  final int classId;
+  final String? id;
+  final String classId;
   final String name;
   final String? sex; // 'M' for male, 'F' for female
   final String? dateOfBirth; // ISO 8601 format (yyyy-MM-dd)
@@ -17,9 +17,8 @@ class StudentModel {
     this.remarks,
   });
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toDto() {
     return {
-      'id': id,
       'class_id': classId,
       'name': name,
       'sex': sex,
@@ -29,21 +28,21 @@ class StudentModel {
     };
   }
 
-  factory StudentModel.fromMap(Map<String, dynamic> map) {
+  factory StudentModel.fromDto(Map<dynamic, dynamic> map, String id) {
     return StudentModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      classId: map['class_id'] as int,
-      name: map['name'] ?? '',
-      sex: map['sex'] as String?,
-      dateOfBirth: map['date_of_birth'] as String?,
-      address: map['address'] as String?,
-      remarks: map['remarks'] as String?,
+      id: id,
+      classId: map['class_id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      sex: map['sex']?.toString(),
+      dateOfBirth: map['date_of_birth']?.toString(),
+      address: map['address']?.toString(),
+      remarks: map['remarks']?.toString(),
     );
   }
 
   StudentModel copyWith({
-    int? id,
-    int? classId,
+    String? id,
+    String? classId,
     String? name,
     String? sex,
     String? dateOfBirth,

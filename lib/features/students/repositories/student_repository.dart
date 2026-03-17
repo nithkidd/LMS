@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/khmer_collator.dart';
 import '../models/student_model.dart';
@@ -6,55 +5,55 @@ import '../models/student_model.dart';
 class StudentRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  Future<int> insert(StudentModel student) async {
-    Database db = await _dbHelper.database;
-    return await db.insert(DatabaseHelper.tableStudents, student.toMap());
+  Future<String> insert(StudentModel student) async {
+    final db = await _dbHelper.database;
+    final id = await db.insert(DatabaseHelper.tableStudents, student.toDto());
+    return id.toString();
   }
 
-  Future<List<StudentModel>> getStudentsByClassId(int classId) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<List<StudentModel>> getStudentsByClassId(String classId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableStudents,
       where: 'class_id = ?',
       whereArgs: [classId],
     );
-    List<StudentModel> students = maps
-        .map((map) => StudentModel.fromMap(map))
+
+    final students = rows
+        .map((row) => StudentModel.fromDto(row, row['id'].toString()))
         .toList();
 
-    // Sort by Khmer alphabetical order
-    KhmerCollator.sortBy(students, (s) => s.name);
-
+    KhmerCollator.sortBy(students, (student) => student.name);
     return students;
   }
 
-  Future<StudentModel?> getById(int id) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<StudentModel?> getById(String id) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableStudents,
       where: 'id = ?',
       whereArgs: [id],
+      limit: 1,
     );
-    if (maps.isNotEmpty) {
-      return StudentModel.fromMap(maps.first);
-    }
-    return null;
+    if (rows.isEmpty) return null;
+    return StudentModel.fromDto(rows.first, rows.first['id'].toString());
   }
 
-  Future<int> update(StudentModel student) async {
-    Database db = await _dbHelper.database;
-    return await db.update(
+  Future<void> update(StudentModel student) async {
+    if (student.id == null) return;
+
+    final db = await _dbHelper.database;
+    await db.update(
       DatabaseHelper.tableStudents,
-      student.toMap(),
+      student.toDto(),
       where: 'id = ?',
       whereArgs: [student.id],
     );
   }
 
-  Future<int> delete(int id) async {
-    Database db = await _dbHelper.database;
-    // Cascading delete handles associated scores automatically
-    return await db.delete(
+  Future<void> delete(String id) async {
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableStudents,
       where: 'id = ?',
       whereArgs: [id],

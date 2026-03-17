@@ -1,30 +1,38 @@
-import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-import 'package:trellis/features/dashboard/views/main_dashboard_screen.dart';
-import 'package:trellis/core/theme/app_theme.dart';
-import 'package:trellis/core/theme/theme_provider.dart';
-import 'package:trellis/core/database/database_helper.dart';
-import 'package:trellis/splash_screen.dart';
+
+import 'core/auth/views/auth_gate.dart';
+import 'core/database/database_helper.dart';
+import 'core/firebase/firebase_bootstrap.dart';
+import 'core/localization/app_localizations.dart';
+import 'core/localization/locale_controller.dart';
+import 'core/theme/app_theme.dart';
+import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize database factory based on platform
   if (kIsWeb) {
-    // Use web-compatible database
     databaseFactory = databaseFactoryFfiWeb;
-  } else if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-    // Use FFI for desktop platforms
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+  } else {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.macOS:
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+        break;
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.fuchsia:
+        break;
+    }
   }
-
-  // Initialize the database before running the app
-  await DatabaseHelper.instance.database;
 
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -34,12 +42,20 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeColor = ref.watch(themeNotifierProvider);
+    final locale = ref.watch(localeControllerProvider);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Trellis',
-      theme: AppTheme.getTheme(themeColor),
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      theme: AppTheme.lightTheme,
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const _SplashWrapper(),
     );
   }
@@ -53,26 +69,39 @@ class _SplashWrapper extends StatefulWidget {
 }
 
 class _SplashWrapperState extends State<_SplashWrapper> {
-  bool _showSplash = true;
+  late final Future<void> _bootstrapFuture;
 
   @override
   void initState() {
     super.initState();
-    // Hide splash screen after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _showSplash = false;
-        });
-      }
-    });
+    _bootstrapFuture = _prepareApp();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) {
-      return const SplashScreen();
+    return FutureBuilder<void>(
+      future: _bootstrapFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SplashScreen();
+        }
+        return const AuthGate();
+      },
+    );
+  }
+
+  Future<void> _prepareApp() async {
+    await Future.wait<void>([
+      _initializeFirebase(),
+      DatabaseHelper.instance.database,
+      Future<void>.delayed(const Duration(milliseconds: 1200)),
+    ]);
+  }
+
+  Future<void> _initializeFirebase() async {
+    if (Firebase.apps.isNotEmpty) {
+      return;
     }
-    return const MainDashboardScreen();
+    await FirebaseBootstrap.initialize();
   }
 }

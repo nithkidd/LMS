@@ -8,7 +8,7 @@ class TeacherPermissionService {
   /// - Otherwise, returns only subjects the teacher teaches
   static List<SubjectModel> filterTeacherEditableSubjects({
     required List<SubjectModel> allSubjects,
-    required List<int> taughtSubjectIds,
+    required List<String> taughtSubjectIds,
   }) {
     if (taughtSubjectIds.isEmpty) {
       // Adviser or teacher with no assigned subjects gets access to all
@@ -26,7 +26,7 @@ class TeacherPermissionService {
   /// A teacher can only see assignments for subjects they teach
   static List<dynamic> filterAssignmentsByTeacherPermission({
     required List<dynamic> allAssignments,
-    required List<int> taughtSubjectIds,
+    required List<String> taughtSubjectIds,
   }) {
     if (taughtSubjectIds.isEmpty) {
       // No taught subjects means show all assignments
@@ -43,8 +43,8 @@ class TeacherPermissionService {
   ///
   /// A teacher can only delete assignments for subjects they teach
   static bool canDeleteAssignment({
-    required int assignmentSubjectId,
-    required List<int> taughtSubjectIds,
+    required String assignmentSubjectId,
+    required List<String> taughtSubjectIds,
   }) {
     // Teacher can delete if they teach the subject or if they teach all subjects (adviser)
     return taughtSubjectIds.isEmpty ||
@@ -53,8 +53,8 @@ class TeacherPermissionService {
 
   /// Checks if a teacher can view assignments in the given subject
   static bool canViewAssignmentsForSubject({
-    required int subjectId,
-    required List<int> taughtSubjectIds,
+    required String subjectId,
+    required List<String> taughtSubjectIds,
   }) {
     // Can view if no restricted subjects or if they teach this subject
     return taughtSubjectIds.isEmpty || taughtSubjectIds.contains(subjectId);
@@ -64,7 +64,7 @@ class TeacherPermissionService {
   ///
   /// Teachers can create assignments if they teach at least one subject
   static bool canCreateAssignments({
-    required List<int> taughtSubjectIds,
+    required List<String> taughtSubjectIds,
     required bool isAdviser,
   }) {
     // Regular teachers with taught subjects can create assignments
@@ -74,8 +74,8 @@ class TeacherPermissionService {
 
   /// Checks if a teacher can edit an assignment
   static bool canEditAssignment({
-    required int assignmentSubjectId,
-    required List<int> taughtSubjectIds,
+    required String assignmentSubjectId,
+    required List<String> taughtSubjectIds,
     required bool isAdviser,
   }) {
     // Advisers cannot edit assignments
@@ -90,7 +90,7 @@ class TeacherPermissionService {
   /// These can be treated as score-only subjects in UI logic.
   static List<SubjectModel> filterAdviserScoreOnlySubjects({
     required List<SubjectModel> allSubjects,
-    required List<int> taughtSubjectIds,
+    required List<String> taughtSubjectIds,
   }) {
     return allSubjects
         .where((subject) => !taughtSubjectIds.contains(subject.id))

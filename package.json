@@ -1,0 +1,29 @@
+{
+  "name": "lms",
+  "version": "1.0.0",
+  "description": "Trellis LMS is a school management and grading app built for day-to-day academic operations.\r It helps schools manage school structures, classes, teachers, students, subjects, assignments, and score tracking in one place, with a Khmer-first UI.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nithkidd/LMS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nithkidd/LMS/issues"
+  },
+  "homepage": "https://github.com/nithkidd/LMS#readme",
+  "dependencies": {
+    "firebase-admin": "^13.7.0"
+  }
+}

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/functional_minimalism_widgets.dart';
+import '../../../gradebook/views/gradebook_grid_screen.dart';
+import '../../data/khmer_months_list.dart';
 import '../../models/assignment_model.dart';
 import '../../providers/assignment_provider.dart';
-import '../../../gradebook/views/gradebook_grid_screen.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../data/khmer_months_list.dart';
-
 
 class AssignmentListTileWidget extends ConsumerWidget {
   final AssignmentModel assignment;
@@ -18,29 +19,29 @@ class AssignmentListTileWidget extends ConsumerWidget {
   });
 
   void _openGradebook(BuildContext context) {
-    if (assignment.id != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => GradebookGridScreen(assignment: assignment),
-        ),
-      );
-    }
+    if (assignment.id == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GradebookGridScreen(assignment: assignment),
+      ),
+    );
   }
 
   void _showEditDialog(BuildContext context, WidgetRef ref) {
     final nameCtrl = TextEditingController(text: assignment.name);
-    final maxPtsCtrl = TextEditingController(
+    final maxPointsCtrl = TextEditingController(
       text: assignment.maxPoints.toString(),
     );
     String selectedMonth = kMonths.contains(assignment.month)
         ? assignment.month
-        : kMonths[0];
+        : kMonths.first;
     String selectedYear = assignment.year;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
           title: const Text('កែប្រែកិច្ចការ'),
           content: SingleChildScrollView(
@@ -49,18 +50,24 @@ class AssignmentListTileWidget extends ConsumerWidget {
               children: [
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'ឈ្មោះកិច្ចការ'),
+                  decoration: const InputDecoration(
+                    labelText: 'ឈ្មោះកិច្ចការ',
+                    hintText: 'សូមបញ្ចូលឈ្មោះកិច្ចការ',
+                  ),
                   autofocus: true,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSizes.paddingMd),
                 TextField(
-                  controller: maxPtsCtrl,
-                  decoration: const InputDecoration(labelText: 'ពិន្ទុអតិបរមា'),
+                  controller: maxPointsCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'ពិន្ទុអតិបរមា',
+                    hintText: 'ឧទាហរណ៍ 100',
+                  ),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSizes.paddingMd),
                 Row(
                   children: [
                     Expanded(
@@ -69,28 +76,31 @@ class AssignmentListTileWidget extends ConsumerWidget {
                         decoration: const InputDecoration(labelText: 'ខែ'),
                         items: kMonths
                             .map(
-                              (m) => DropdownMenuItem(
-                                value: m,
-                                child: Text(kMonthLabels[m] ?? m),
+                              (month) => DropdownMenuItem(
+                                value: month,
+                                child: Text(kMonthLabels[month] ?? month),
                               ),
                             )
                             .toList(),
-                        onChanged: (val) =>
-                            setStateDialog(() => selectedMonth = val!),
+                        onChanged: (value) =>
+                            setStateDialog(() => selectedMonth = value!),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSizes.paddingSm),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: selectedYear,
                         decoration: const InputDecoration(labelText: 'ឆ្នាំ'),
                         items: ['2023', '2024', '2025', '2026']
                             .map(
-                              (y) => DropdownMenuItem(value: y, child: Text(y)),
+                              (year) => DropdownMenuItem(
+                                value: year,
+                                child: Text(year),
+                              ),
                             )
                             .toList(),
-                        onChanged: (val) =>
-                            setStateDialog(() => selectedYear = val!),
+                        onChanged: (value) =>
+                            setStateDialog(() => selectedYear = value!),
                       ),
                     ),
                   ],
@@ -100,16 +110,17 @@ class AssignmentListTileWidget extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('បោះបង់'),
             ),
-            FilledButton(
+            FilledButton.icon(
               onPressed: () {
                 final name = nameCtrl.text.trim();
-                final maxPts = double.tryParse(maxPtsCtrl.text.trim());
+                final maxPoints = double.tryParse(maxPointsCtrl.text.trim());
+
                 if (name.isNotEmpty &&
-                    maxPts != null &&
-                    maxPts > 0 &&
+                    maxPoints != null &&
+                    maxPoints > 0 &&
                     assignment.id != null) {
                   ref
                       .read(assignmentNotifierProvider.notifier)
@@ -118,13 +129,14 @@ class AssignmentListTileWidget extends ConsumerWidget {
                           name: name,
                           month: selectedMonth,
                           year: selectedYear,
-                          maxPoints: maxPts,
+                          maxPoints: maxPoints,
                         ),
                       );
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 }
               },
-              child: const Text('រក្សាទុក'),
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('រក្សាទុក'),
             ),
           ],
         ),
@@ -135,23 +147,24 @@ class AssignmentListTileWidget extends ConsumerWidget {
   void _showDeleteDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('លុបកិច្ចការចេញ?'),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('លុបកិច្ចការ'),
         content: Text(
-          'លុប "${assignment.name}" មែនទេ? ពិន្ទុទាំងអស់សម្រាប់កិច្ចការនេះនឹងត្រូវលុប។',
+          'តើអ្នកចង់លុប "${assignment.name}" មែនទេ? ពិន្ទុដែលទាក់ទងនឹងកិច្ចការនេះនឹងត្រូវបានលុប។',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('បោះបង់'),
           ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () {
-              onDelete!();
-              Navigator.pop(ctx);
+              onDelete?.call();
+              Navigator.pop(dialogContext);
             },
-            child: const Text('លុប'),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('លុបកិច្ចការ'),
           ),
         ],
       ),
@@ -160,87 +173,49 @@ class AssignmentListTileWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSizes.paddingSm),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        onTap: () => _openGradebook(context),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSizes.paddingMd,
-            vertical: AppSizes.paddingSm,
+    final monthLabel = kMonthLabels[assignment.month] ?? assignment.month;
+
+    return TrellisSectionSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(assignment.name, style: AppTextStyles.subheading),
+          const SizedBox(height: AppSizes.paddingSm),
+          Text(
+            'ខែ $monthLabel ${assignment.year}',
+            style: AppTextStyles.body,
           ),
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-            child: Icon(Icons.assignment, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 4),
+          Text(
+            'ពិន្ទុអតិបរមា ${assignment.maxPoints}',
+            style: AppTextStyles.caption,
           ),
-          title: Text(assignment.name, style: AppTextStyles.subheading),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: Text(
-              '${kMonthLabels[assignment.month] ?? assignment.month} ${assignment.year} • អតិបរមា៖ ${assignment.maxPoints} ពិន្ទុ',
-              style: AppTextStyles.caption,
-            ),
-          ),
-          trailing: PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-            onSelected: (value) {
-              if (value == 'open') _openGradebook(context);
-              if (value == 'edit') _showEditDialog(context, ref);
-              if (value == 'remove' && onDelete != null) {
-                _showDeleteDialog(context);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem<String>(
-                value: 'open',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.grading,
-                      color: AppColors.primary,
-                      size: AppSizes.iconMd,
-                    ),
-                    SizedBox(width: 8),
-                    Text('បើកតារាងពិន្ទុ'),
-                  ],
-                ),
+          const SizedBox(height: AppSizes.paddingMd),
+          TrellisCardActions(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _openGradebook(context),
+                icon: const Icon(Icons.table_chart_outlined),
+                label: const Text('បើកតារាងពិន្ទុ'),
               ),
-              const PopupMenuItem<String>(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.edit_outlined,
-                      color: AppColors.primary,
-                      size: AppSizes.iconMd,
-                    ),
-                    SizedBox(width: 8),
-                    Text('កែប្រែ'),
-                  ],
-                ),
+              OutlinedButton.icon(
+                onPressed: () => _showEditDialog(context, ref),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('កែប្រែ'),
               ),
               if (onDelete != null)
-                const PopupMenuItem<String>(
-                  value: 'remove',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        color: AppColors.danger,
-                        size: AppSizes.iconMd,
-                      ),
-                      SizedBox(width: 8),
-                      Text('លុប', style: TextStyle(color: AppColors.danger)),
-                    ],
+                OutlinedButton.icon(
+                  onPressed: () => _showDeleteDialog(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(color: AppColors.danger, width: 1.2),
                   ),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('លុប'),
                 ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

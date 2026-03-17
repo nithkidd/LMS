@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../students/providers/student_provider.dart';
+import '../../../core/widgets/functional_minimalism_widgets.dart';
 import 'student_list_tile_widget.dart';
 import 'student_form_dialog.dart';
 import '../../../core/theme/app_theme.dart';
 
 class RosterTabWidget extends ConsumerStatefulWidget {
-  final int classId;
+  final String classId;
 
   const RosterTabWidget({super.key, required this.classId});
 
@@ -58,16 +59,14 @@ class RosterTabWidgetState extends ConsumerState<RosterTabWidget> {
           child: studentsState.when(
             data: (students) {
               if (students.isEmpty) {
-                return Center(
+                return const Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(AppSizes.paddingLg),
-                    child: Text(
-                      'បញ្ជីសិស្សក្នុងថ្នាក់នេះនៅទទេ។\nចុចបន្ថែមខាងលើដើម្បីចាប់ផ្តើម។',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.5,
-                      ),
+                    padding: EdgeInsets.all(AppSizes.paddingLg),
+                    child: TrellisEmptyState(
+                      icon: Icons.folder_open_rounded,
+                      title: 'មិនទាន់មានទិន្នន័យនៅឡើយទេ',
+                      message:
+                          'បញ្ជីសិស្សក្នុងថ្នាក់នេះនៅទទេ។ ចុចប៊ូតុងបន្ថែមសិស្សខាងលើ ដើម្បីចាប់ផ្តើម។',
                     ),
                   ),
                 );
@@ -98,9 +97,18 @@ class RosterTabWidgetState extends ConsumerState<RosterTabWidget> {
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
-              child: Text(
-                'កំហុស៖ $error',
-                style: TextStyle(color: AppColors.danger),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.paddingLg),
+                child: TrellisEmptyState(
+                  icon: Icons.error_outline_rounded,
+                  title: 'មានបញ្ហាក្នុងការផ្ទុកបញ្ជីសិស្ស',
+                  message: '$error',
+                  accent: const TrellisAccent(
+                    backgroundColor: Color(0xFFFFE7E4),
+                    foregroundColor: AppColors.danger,
+                    icon: Icons.error_outline_rounded,
+                  ),
+                ),
               ),
             ),
           ),

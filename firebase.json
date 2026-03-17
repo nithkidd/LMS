@@ -1,0 +1,35 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "trellis-lms",
+          "appId": "1:980371250920:android:bbbf0351d917970c09f35d",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "trellis-lms",
+          "configurations": {
+            "android": "1:980371250920:android:bbbf0351d917970c09f35d",
+            "ios": "1:980371250920:ios:db74903a3cdc234609f35d",
+            "macos": "1:980371250920:ios:db74903a3cdc234609f35d",
+            "web": "1:980371250920:web:71e6a9257d43aca109f35d",
+            "windows": "1:980371250920:web:b93900a26a08057e09f35d"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

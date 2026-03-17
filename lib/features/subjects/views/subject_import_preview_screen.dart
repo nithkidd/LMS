@@ -124,15 +124,15 @@ class _SubjectImportPreviewScreenState
           if (widget.preview.existingNames.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(AppSizes.paddingMd),
-              color: Colors.orange.shade50,
+              color: AppColors.primarySoft,
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange.shade700),
+                  Icon(Icons.info_outline, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'មុខវិជ្ជាដែលមានរួចហើយនឹងត្រូវបានរំលងដោយស្វ័យប្រវត្តិ',
-                      style: TextStyle(color: Colors.orange.shade900),
+                      style: TextStyle(color: AppColors.primary),
                     ),
                   ),
                 ],
@@ -172,9 +172,9 @@ class _SubjectImportPreviewScreenState
                             ),
                           ),
                           subtitle: existsAlready
-                              ? const Text(
+                              ? Text(
                                   'មានរួចហើយ',
-                                  style: TextStyle(color: Colors.orange),
+                                  style: TextStyle(color: AppColors.primary),
                                 )
                               : null,
                           trailing: existsAlready

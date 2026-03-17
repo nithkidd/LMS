@@ -9,8 +9,8 @@ final gradebookVisibleSubjectsProvider =
       List<SubjectModel>,
       (
         List<SubjectModel> allSubjects,
-        int classId,
-        int? teacherId,
+        String classId,
+        String? teacherId,
         bool isAdviser,
       )
     >((ref, params) async {
@@ -41,7 +41,7 @@ final gradebookVisibleSubjectsProvider =
 final adviserScoreOnlySubjectsProvider =
     FutureProvider.family<
       List<SubjectModel>,
-      (List<SubjectModel> allSubjects, int classId, int teacherId)
+      (List<SubjectModel> allSubjects, String classId, String teacherId)
     >((ref, params) async {
       final (allSubjects, classId, teacherId) = params;
 

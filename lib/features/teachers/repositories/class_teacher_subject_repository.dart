@@ -1,158 +1,150 @@
-import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
-import '../../teachers/models/teacher_model.dart';
 import '../../subjects/models/subject_model.dart';
+import '../../teachers/models/teacher_model.dart';
 import '../models/class_teacher_subject_model.dart';
 
 class ClassTeacherSubjectRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  Future<int> insert(ClassTeacherSubjectModel model) async {
-    Database db = await _dbHelper.database;
-    return await db.insert(
+  Future<String> insert(ClassTeacherSubjectModel model) async {
+    final db = await _dbHelper.database;
+    final id = await db.insert(
       DatabaseHelper.tableClassTeacherSubject,
-      model.toMap(),
+      model.toDto(),
     );
+    return id.toString();
   }
 
-  Future<int> delete(int id) async {
-    Database db = await _dbHelper.database;
-    return await db.delete(
+  Future<void> delete(String id) async {
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableClassTeacherSubject,
       where: 'id = ?',
       whereArgs: [id],
     );
   }
 
-  Future<int> deleteByClassAndTeacherAndSubject({
-    required int classId,
-    required int teacherId,
-    required int subjectId,
+  Future<void> deleteByClassAndTeacherAndSubject({
+    required String classId,
+    required String teacherId,
+    required String subjectId,
   }) async {
-    Database db = await _dbHelper.database;
-    return await db.delete(
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableClassTeacherSubject,
       where: 'class_id = ? AND teacher_id = ? AND subject_id = ?',
       whereArgs: [classId, teacherId, subjectId],
     );
   }
 
-  /// Get all subject assignments for a teacher in a class
   Future<List<ClassTeacherSubjectModel>> getByClassAndTeacher({
-    required int classId,
-    required int teacherId,
+    required String classId,
+    required String teacherId,
   }) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableClassTeacherSubject,
       where: 'class_id = ? AND teacher_id = ?',
       whereArgs: [classId, teacherId],
     );
-    return maps.map((map) => ClassTeacherSubjectModel.fromMap(map)).toList();
+
+    return rows
+        .map(
+          (row) => ClassTeacherSubjectModel.fromDto(row, row['id'].toString()),
+        )
+        .toList();
   }
 
-  /// Get all subject IDs assigned to a teacher in a class
-  Future<List<int>> getAssignedSubjectIds({
-    required int classId,
-    required int teacherId,
+  Future<List<String>> getAssignedSubjectIds({
+    required String classId,
+    required String teacherId,
   }) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
-      DatabaseHelper.tableClassTeacherSubject,
-      columns: ['subject_id'],
-      where: 'class_id = ? AND teacher_id = ?',
-      whereArgs: [classId, teacherId],
+    final assignments = await getByClassAndTeacher(
+      classId: classId,
+      teacherId: teacherId,
     );
-    return maps.map((map) => map['subject_id'] as int).toList();
+    return assignments.map((assignment) => assignment.subjectId).toList();
   }
 
-  /// Get all teachers assigned to a subject in a class
   Future<List<ClassTeacherSubjectRow>> getTeachersByClassAndSubject({
-    required int classId,
-    required int subjectId,
+    required String classId,
+    required String subjectId,
   }) async {
-    Database db = await _dbHelper.database;
-    final result = await db.rawQuery(
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
       '''
-      SELECT 
-        cts.id,
-        t.id as teacher_id,
+      SELECT
+        cts.id AS assignment_id,
+        t.id AS teacher_id,
         t.school_id,
-        t.name as teacher_name,
-        t.created_at,
-        s.id as subject_id,
-        s.class_id,
-        s.name as subject_name
+        t.name AS teacher_name,
+        t.created_at AS teacher_created_at,
+        s.id AS subject_id,
+        s.class_id AS subject_class_id,
+        s.name AS subject_name,
+        s.display_order
       FROM ${DatabaseHelper.tableClassTeacherSubject} cts
-      JOIN ${DatabaseHelper.tableTeachers} t ON cts.teacher_id = t.id
-      JOIN ${DatabaseHelper.tableSubjects} s ON cts.subject_id = s.id
+      INNER JOIN ${DatabaseHelper.tableTeachers} t ON t.id = cts.teacher_id
+      INNER JOIN ${DatabaseHelper.tableSubjects} s ON s.id = cts.subject_id
       WHERE cts.class_id = ? AND cts.subject_id = ?
-    ''',
+      ''',
       [classId, subjectId],
     );
 
-    return result.map((map) {
-      final teacher = TeacherModel.fromMap({
-        'id': map['teacher_id'],
-        'school_id': map['school_id'],
-        'name': map['teacher_name'],
-        'created_at': map['created_at'],
-      });
-      final subject = SubjectModel.fromMap({
-        'id': map['subject_id'],
-        'class_id': map['class_id'],
-        'name': map['subject_name'],
-      });
-      return ClassTeacherSubjectRow(
-        teacher: teacher,
-        subject: subject,
-        assignmentId: map['id'] as int,
-      );
-    }).toList();
+    return rows.map(_mapRowToAssignment).toList();
   }
 
-  /// Get all subjects with their assigned teachers for a class
   Future<List<ClassTeacherSubjectRow>> getSubjectsWithTeachers({
-    required int classId,
+    required String classId,
   }) async {
-    Database db = await _dbHelper.database;
-    final result = await db.rawQuery(
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
       '''
-      SELECT 
-        cts.id,
-        t.id as teacher_id,
+      SELECT
+        cts.id AS assignment_id,
+        t.id AS teacher_id,
         t.school_id,
-        t.name as teacher_name,
-        t.created_at,
-        s.id as subject_id,
-        s.class_id,
-        s.name as subject_name
+        t.name AS teacher_name,
+        t.created_at AS teacher_created_at,
+        s.id AS subject_id,
+        s.class_id AS subject_class_id,
+        s.name AS subject_name,
+        s.display_order
       FROM ${DatabaseHelper.tableClassTeacherSubject} cts
-      JOIN ${DatabaseHelper.tableTeachers} t ON cts.teacher_id = t.id
-      JOIN ${DatabaseHelper.tableSubjects} s ON cts.subject_id = s.id
+      INNER JOIN ${DatabaseHelper.tableTeachers} t ON t.id = cts.teacher_id
+      INNER JOIN ${DatabaseHelper.tableSubjects} s ON s.id = cts.subject_id
       WHERE cts.class_id = ?
-      ORDER BY s.name, t.name
-    ''',
+      ''',
       [classId],
     );
 
-    return result.map((map) {
-      final teacher = TeacherModel.fromMap({
-        'id': map['teacher_id'],
-        'school_id': map['school_id'],
-        'name': map['teacher_name'],
-        'created_at': map['created_at'],
-      });
-      final subject = SubjectModel.fromMap({
-        'id': map['subject_id'],
-        'class_id': map['class_id'],
-        'name': map['subject_name'],
-      });
-      return ClassTeacherSubjectRow(
-        teacher: teacher,
-        subject: subject,
-        assignmentId: map['id'] as int,
-      );
-    }).toList();
+    final assignments = rows.map(_mapRowToAssignment).toList();
+    assignments.sort((a, b) {
+      final subjectCompare = a.subject.name.compareTo(b.subject.name);
+      if (subjectCompare != 0) return subjectCompare;
+      return a.teacher.name.compareTo(b.teacher.name);
+    });
+    return assignments;
+  }
+
+  ClassTeacherSubjectRow _mapRowToAssignment(Map<String, Object?> row) {
+    final displayOrder = row['display_order'];
+    return ClassTeacherSubjectRow(
+      teacher: TeacherModel(
+        id: row['teacher_id'].toString(),
+        schoolId: row['school_id'].toString(),
+        name: row['teacher_name']?.toString() ?? '',
+        createdAt: row['teacher_created_at']?.toString(),
+      ),
+      subject: SubjectModel(
+        id: row['subject_id'].toString(),
+        classId: row['subject_class_id'].toString(),
+        name: row['subject_name']?.toString() ?? '',
+        displayOrder: displayOrder == null
+            ? null
+            : int.tryParse(displayOrder.toString()),
+      ),
+      assignmentId: row['assignment_id'].toString(),
+    );
   }
 }

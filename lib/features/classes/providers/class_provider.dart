@@ -34,14 +34,14 @@ const _khmerSubjects = [
 ];
 
 class ClassNotifier extends AsyncNotifier<List<ClassModel>> {
-  int? _currentSchoolId;
+  String? _currentSchoolId;
 
   @override
   FutureOr<List<ClassModel>> build() async {
     return [];
   }
 
-  Future<void> loadClassesForSchool(int schoolId) async {
+  Future<void> loadClassesForSchool(String schoolId) async {
     _currentSchoolId = schoolId;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -51,7 +51,7 @@ class ClassNotifier extends AsyncNotifier<List<ClassModel>> {
   }
 
   Future<void> addClass(
-    int schoolId,
+    String schoolId,
     String name,
     String academicYear, {
     bool isAdviser = false,
@@ -91,7 +91,7 @@ class ClassNotifier extends AsyncNotifier<List<ClassModel>> {
     });
   }
 
-  Future<void> deleteClass(int id) async {
+  Future<void> deleteClass(String id) async {
     if (_currentSchoolId == null) return;
 
     state = const AsyncValue.loading();
@@ -103,20 +103,19 @@ class ClassNotifier extends AsyncNotifier<List<ClassModel>> {
     });
   }
 
-  Future<void> updateClass(int id, String name, String academicYear) async {
+  Future<void> updateClass(String id, String name, String academicYear) async {
     if (_currentSchoolId == null) return;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(classRepositoryProvider);
 
-      // We should ideally fetch current to preserve isAdviser but updateClassDetailed handles that now
       await repository.update(
         ClassModel(
           id: id,
           schoolId: _currentSchoolId!,
           name: name,
           academicYear: academicYear,
-          isAdviser: false, // Legacy overwrite without data context
+          isAdviser: false,
         ),
       );
       return await repository.getClassesBySchoolId(_currentSchoolId!);

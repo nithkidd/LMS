@@ -4,13 +4,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/grade_calculation_service.dart';
 import '../providers/score_provider.dart';
 import '../providers/gradebook_permission_provider.dart';
+import '../widgets/advisor_ranking_print_view.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../students/providers/student_provider.dart';
 import '../../assignments/models/assignment_model.dart';
 import '../../assignments/providers/assignment_provider.dart';
+import '../../students/models/student_model.dart';
 import '../models/score_model.dart';
 
 enum GradebookViewMode { classAdviser, subjectTeacher }
+
+enum AdviserClassViewMode { scorebook, ranking }
+
+const List<String> _adviserReportMonths = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 const Map<String, String> kMonthLabels = {
   'Jan': 'មករា',
@@ -28,8 +46,8 @@ const Map<String, String> kMonthLabels = {
 };
 
 class GradebookMainTabWidget extends ConsumerStatefulWidget {
-  final int classId;
-  final int? teacherId; // null = admin, non-null = teacher view
+  final String classId;
+  final String? teacherId; // null = admin, non-null = teacher view
   final bool isAdviser;
 
   const GradebookMainTabWidget({
@@ -47,7 +65,9 @@ class GradebookMainTabWidget extends ConsumerStatefulWidget {
 class _GradebookMainTabWidgetState
     extends ConsumerState<GradebookMainTabWidget> {
   late GradebookViewMode _viewMode;
-  int? _selectedSubjectId;
+  late AdviserClassViewMode _adviserViewMode;
+  late String _selectedAdviserMonth;
+  String? _selectedSubjectId;
 
   bool get _canAccessAdviserView => widget.isAdviser;
 
@@ -58,6 +78,8 @@ class _GradebookMainTabWidgetState
     _viewMode = _canAccessAdviserView
         ? GradebookViewMode.classAdviser
         : GradebookViewMode.subjectTeacher;
+    _adviserViewMode = AdviserClassViewMode.scorebook;
+    _selectedAdviserMonth = _adviserReportMonths[DateTime.now().month - 1];
   }
 
   @override
@@ -203,7 +225,7 @@ class _GradebookMainTabWidgetState
                             });
                           }
 
-                          return DropdownButton<int>(
+                          return DropdownButton<String>(
                             value: _selectedSubjectId,
                             underline: const SizedBox(),
                             items: visibleSubjects
@@ -226,6 +248,23 @@ class _GradebookMainTabWidgetState
                       );
                     },
                   ),
+                ],
+                if (_viewMode == GradebookViewMode.classAdviser &&
+                    _canAccessAdviserView) ...[
+                  const SizedBox(height: AppSizes.paddingMd),
+                  const Text(
+                    'ទិដ្ឋភាព',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSizes.paddingSm),
+                  _buildAdviserViewSwitcher(),
+                  const SizedBox(height: AppSizes.paddingMd),
+                  const Text(
+                    'ខែ',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSizes.paddingSm),
+                  _buildAdviserMonthSelector(),
                 ],
               ],
             )
@@ -299,7 +338,7 @@ class _GradebookMainTabWidgetState
                             });
                           }
 
-                          return DropdownButton<int>(
+                          return DropdownButton<String>(
                             value: _selectedSubjectId,
                             underline: const SizedBox(),
                             items: visibleSubjects
@@ -323,8 +362,68 @@ class _GradebookMainTabWidgetState
                     },
                   ),
                 ],
+                if (_viewMode == GradebookViewMode.classAdviser &&
+                    _canAccessAdviserView) ...[
+                  const SizedBox(width: AppSizes.paddingLg),
+                  _buildAdviserViewSwitcher(),
+                  const SizedBox(width: AppSizes.paddingLg),
+                  _buildAdviserMonthSelector(),
+                ],
               ],
             ),
+    );
+  }
+
+  Widget _buildAdviserViewSwitcher() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SegmentedButton<AdviserClassViewMode>(
+        segments: const [
+          ButtonSegment<AdviserClassViewMode>(
+            value: AdviserClassViewMode.scorebook,
+            label: Text('តារាងបូងពិន្ទុប្រលងប្រចាំខែ'),
+            icon: Icon(Icons.grid_view_rounded, size: 18),
+          ),
+          ButtonSegment<AdviserClassViewMode>(
+            value: AdviserClassViewMode.ranking,
+            label: Text('តារាងចំណាត់ថ្នាក់'),
+            icon: Icon(Icons.leaderboard_rounded, size: 18),
+          ),
+        ],
+        selected: {_adviserViewMode},
+        onSelectionChanged: (selection) {
+          if (selection.isNotEmpty) {
+            setState(() => _adviserViewMode = selection.first);
+          }
+        },
+        showSelectedIcon: false,
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          side: WidgetStateProperty.all(
+            const BorderSide(color: AppColors.borderStrong),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdviserMonthSelector() {
+    return DropdownButton<String>(
+      value: _selectedAdviserMonth,
+      underline: const SizedBox(),
+      items: _adviserReportMonths
+          .map(
+            (month) => DropdownMenuItem(
+              value: month,
+              child: Text(kMonthLabels[month] ?? month),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => _selectedAdviserMonth = value);
+        }
+      },
     );
   }
 
@@ -333,117 +432,327 @@ class _GradebookMainTabWidgetState
   // ---------------------------------------------------------------------------
 
   Widget _buildClassAdviserView(GradeCalculationData data) {
-    if (data.adviserRows.isEmpty) {
-      return const Center(child: Text('មិនមានសិស្សក្នុងថ្នាក់នេះ។'));
+    final monthlyRows = _buildMonthlyAdviserRows(data);
+    return switch (_adviserViewMode) {
+      AdviserClassViewMode.scorebook => _buildClassAdviserScorebookView(
+        data,
+        monthlyRows,
+      ),
+      AdviserClassViewMode.ranking => AdvisorRankingPrintView(
+        data: AdvisorRankingPrintData(
+          rows: monthlyRows
+              .map(
+                (row) => AdvisorRankingPrintRow(
+                  rank: row.rank,
+                  fullName: row.student.name,
+                  totalScore: row.totalScore,
+                  averageScore: row.averageScore,
+                  mention: row.mention,
+                  resultStatus: row.resultStatus,
+                ),
+              )
+              .toList(growable: false),
+        ),
+        title: 'តារាងចំណាត់ថ្នាក់',
+        subtitle: _selectedMonthlyReportSubtitle(),
+      ),
+    };
+  }
+
+  Widget _buildClassAdviserScorebookView(
+    GradeCalculationData data,
+    List<_MonthlyAdviserRow> monthlyRows,
+  ) {
+    if (monthlyRows.isEmpty) {
+      return const Center(child: Text('មិនមានសិស្សក្នុងថ្នាក់នេះទេ។'));
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: MediaQuery.of(context).size.width,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildMonthlyReportHeader(
+          title: 'តារាងបូងពិន្ទុប្រលងប្រចាំខែ',
+          subtitle: _selectedMonthlyReportSubtitle(),
         ),
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
-          columnSpacing: 8,
-          horizontalMargin: 8,
-          columns: [
-            const DataColumn(
-              label: Text('ល.រ', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            const DataColumn(
-              label: Text(
-                'នាម និង គោត្តនាម',
-                style: TextStyle(fontWeight: FontWeight.bold),
+        const SizedBox(height: AppSizes.paddingMd),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: MediaQuery.of(context).size.width,
               ),
-            ),
-            ...data.subjects.map(
-              (s) => DataColumn(
-                label: Text(
-                  s.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(
+                  AppColors.surfaceMuted,
                 ),
-              ),
-            ),
-            const DataColumn(
-              label: Text(
-                'ពិន្ទុសរុប',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const DataColumn(
-              label: Text(
-                'មធ្យមភាគ',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const DataColumn(
-              label: Text(
-                'ចំណាត់ថ្នាក់',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const DataColumn(
-              label: Text(
-                'ផ្សេងៗ (កំណត់សម្គាល់)',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-          rows: data.adviserRows.asMap().entries.map((entry) {
-            final index = entry.key;
-            final row = entry.value;
-            final totalScore = data.subjects
-                .map((s) => row.subjectYearlyAverages[s.id] ?? 0)
-                .fold<double>(0, (sum, value) => sum + value);
-            return DataRow(
-              cells: [
-                DataCell(Text('${index + 1}')),
-                DataCell(
-                  Text(
-                    row.student.name,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                columnSpacing: 10,
+                horizontalMargin: 10,
+                dividerThickness: 0.8,
+                border: TableBorder(
+                  horizontalInside: const BorderSide(
+                    color: AppColors.border,
+                    width: 0.8,
+                  ),
+                  verticalInside: const BorderSide(
+                    color: AppColors.border,
+                    width: 0.8,
                   ),
                 ),
-                ...data.subjects.map((s) {
-                  final avg = row.subjectYearlyAverages[s.id];
-                  return DataCell(
-                    Text(avg != null && avg > 0 ? avg.toStringAsFixed(0) : '-'),
-                  );
-                }),
-                DataCell(
-                  Text(totalScore > 0 ? totalScore.toStringAsFixed(0) : '-'),
-                ),
-                DataCell(
-                  Text(
-                    row.overallPercentage > 0
-                        ? '${row.overallPercentage.toStringAsFixed(1)}%'
-                        : '-',
-                  ),
-                ),
-                DataCell(Text(row.rank > 0 ? row.rank.toString() : '-')),
-                DataCell(
-                  SizedBox(
-                    width: 150,
-                    child: TextFormField(
-                      initialValue: row.student.remarks ?? '',
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'បន្ថែមកំណត់សម្គាល់...',
-                        isDense: true,
-                      ),
-                      onFieldSubmitted: (val) => ref
-                          .read(studentNotifierProvider.notifier)
-                          .updateStudent(row.student.copyWith(remarks: val)),
+                columns: [
+                  const DataColumn(
+                    label: Text(
+                      'ល.រ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                ),
-              ],
-            );
-          }).toList(),
+                  const DataColumn(
+                    label: Text(
+                      'គោត្តនាម និងនាម',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  ...data.subjects.map(
+                    (subject) => DataColumn(
+                      label: Text(
+                        subject.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: Text(
+                      'សរុប',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: Text(
+                      'ម-ភាគ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: Text(
+                      'និទ្ទេស',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: Text(
+                      'ចំណាត់ថ្នាក់',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+                rows: monthlyRows.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final row = entry.value;
+
+                  return DataRow(
+                    color: _buildGradebookRowColor(index),
+                    cells: [
+                      DataCell(Text('${index + 1}')),
+                      DataCell(
+                        Text(
+                          row.student.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      ...data.subjects.map((subject) {
+                        final score =
+                            row.subjectYearlyAverages[subject.id] ?? 0;
+                        return DataCell(
+                          Text(score > 0 ? score.toStringAsFixed(1) : '-'),
+                        );
+                      }),
+                      DataCell(Text(row.totalScore.toStringAsFixed(1))),
+                      DataCell(Text(row.averageScore.toStringAsFixed(2))),
+                      DataCell(Text(row.mention)),
+                      DataCell(Text(row.rank.toString())),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildMonthlyReportHeader({
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.paddingLg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.surfaceRaised, AppColors.surface],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textPrimary.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.heading.copyWith(fontSize: 22)),
+          const SizedBox(height: AppSizes.paddingXs),
+          Text(
+            subtitle,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  // ignore: unused_element
+  String _monthlyReportSubtitle() {
+    final now = DateTime.now();
+    const monthKeys = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final monthKey = monthKeys[now.month - 1];
+    final monthLabel = kMonthLabels[monthKey] ?? monthKey;
+    return 'ប្រចាំខែ $monthLabel ${now.year}';
+  }
+
+  String _selectedMonthlyReportSubtitle() {
+    final year = DateTime.now().year;
+    final monthLabel =
+        kMonthLabels[_selectedAdviserMonth] ?? _selectedAdviserMonth;
+    return 'ប្រចាំខែ $monthLabel $year';
+  }
+
+  List<_MonthlyAdviserRow> _buildMonthlyAdviserRows(GradeCalculationData data) {
+    final subjectIds = data.subjects
+        .map((subject) => subject.id)
+        .whereType<String>()
+        .toList(growable: false);
+    if (subjectIds.isEmpty) {
+      return const [];
+    }
+
+    final studentOrder = <String>[];
+    final seenStudentIds = <String>{};
+    final studentById = <String, StudentModel>{};
+    final subjectScoresByStudentId = <String, Map<String, double>>{};
+
+    for (final subject in data.subjects) {
+      final subjectId = subject.id;
+      if (subjectId == null) {
+        continue;
+      }
+
+      final rows =
+          data.subjectTeacherRows[subjectId] ?? const <SubjectTeacherRow>[];
+      for (final row in rows) {
+        final studentId = _monthlyStudentKey(row);
+        if (seenStudentIds.add(studentId)) {
+          studentOrder.add(studentId);
+        }
+
+        studentById[studentId] = row.student;
+        subjectScoresByStudentId.putIfAbsent(studentId, () => {});
+        subjectScoresByStudentId[studentId]![subjectId] =
+            row.monthlyPercentages[_selectedAdviserMonth] ?? 0;
+      }
+    }
+
+    final unrankedRows = studentOrder
+        .map((studentId) {
+          final student = studentById[studentId];
+          if (student == null) {
+            return null;
+          }
+
+          final subjectScores = {
+            for (final subjectId in subjectIds)
+              subjectId: subjectScoresByStudentId[studentId]?[subjectId] ?? 0,
+          };
+          final totalScore = subjectScores.values.fold<double>(
+            0,
+            (sum, value) => sum + value,
+          );
+          final averageScore = totalScore / subjectIds.length;
+
+          return _MonthlyAdviserRow(
+            student: student,
+            subjectYearlyAverages: subjectScores,
+            totalScore: totalScore,
+            averageScore: averageScore,
+            mention: _monthlyMention(averageScore),
+          );
+        })
+        .whereType<_MonthlyAdviserRow>()
+        .toList();
+
+    unrankedRows.sort((a, b) {
+      final totalCompare = b.totalScore.compareTo(a.totalScore);
+      if (totalCompare != 0) {
+        return totalCompare;
+      }
+      return a.student.name.compareTo(b.student.name);
+    });
+
+    var currentRank = 1;
+    double? previousTotal;
+    final rankedRows = <_MonthlyAdviserRow>[];
+    for (var index = 0; index < unrankedRows.length; index++) {
+      final row = unrankedRows[index];
+      if (previousTotal != null && row.totalScore != previousTotal) {
+        currentRank = index + 1;
+      }
+      rankedRows.add(row.copyWith(rank: currentRank));
+      previousTotal = row.totalScore;
+    }
+
+    return rankedRows;
+  }
+
+  String _monthlyStudentKey(SubjectTeacherRow row) {
+    final studentId = row.student.id?.trim();
+    if (studentId != null && studentId.isNotEmpty) {
+      return studentId;
+    }
+    return row.student.name.trim();
+  }
+
+  String _monthlyMention(double averageScore) {
+    if (averageScore >= 40.0) {
+      return 'ល្អ';
+    }
+    if (averageScore >= 32.5) {
+      return 'ល្អបង្គួរ';
+    }
+    if (averageScore >= 25.0) {
+      return 'មធ្យម';
+    }
+    return 'ខ្សោយ';
   }
 
   // ---------------------------------------------------------------------------
@@ -481,8 +790,8 @@ class _GradebookMainTabWidgetState
     final sem2Sorted = rows.where((r) => r.sem2Average > 0).toList()
       ..sort((a, b) => b.sem2Average.compareTo(a.sem2Average));
 
-    final sem1Ranks = <int, int>{};
-    final sem2Ranks = <int, int>{};
+    final sem1Ranks = <String, int>{};
+    final sem2Ranks = <String, int>{};
 
     int currentSem1Rank = 1;
     for (int i = 0; i < sem1Sorted.length; i++) {
@@ -513,9 +822,20 @@ class _GradebookMainTabWidgetState
           minWidth: MediaQuery.of(context).size.width,
         ),
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
-          columnSpacing: 8,
-          horizontalMargin: 8,
+          headingRowColor: WidgetStateProperty.all(AppColors.surfaceMuted),
+          columnSpacing: 10,
+          horizontalMargin: 10,
+          dividerThickness: 0.8,
+          border: TableBorder(
+            horizontalInside: const BorderSide(
+              color: AppColors.border,
+              width: 0.8,
+            ),
+            verticalInside: const BorderSide(
+              color: AppColors.border,
+              width: 0.8,
+            ),
+          ),
           columns: [
             const DataColumn(
               label: Text('ល.រ', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -570,6 +890,7 @@ class _GradebookMainTabWidgetState
             final row = entry.value;
             final studentId = row.student.id;
             return DataRow(
+              color: _buildGradebookRowColor(index),
               cells: [
                 DataCell(Text('${index + 1}')),
                 DataCell(
@@ -613,6 +934,19 @@ class _GradebookMainTabWidgetState
         ),
       ),
     );
+  }
+
+  WidgetStateProperty<Color?> _buildGradebookRowColor(int index) {
+    final baseColor = index.isEven
+        ? AppColors.surfaceRaised
+        : AppColors.canvasSoft.withValues(alpha: 0.72);
+
+    return WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.hovered)) {
+        return AppColors.primarySoft.withValues(alpha: 0.5);
+      }
+      return baseColor;
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -780,7 +1114,7 @@ class _GradebookMainTabWidgetState
         studentName: row.student.name,
         titleLabel: kMonthLabels[month] ?? month,
         entries: entries,
-        onSave: (Map<int, double?> newScores) async {
+        onSave: (Map<String, double?> newScores) async {
           final notifier = ref.read(scoreNotifierProvider.notifier);
           for (final e in newScores.entries) {
             if (e.value != null) {
@@ -847,7 +1181,7 @@ class _GradebookMainTabWidgetState
         titleLabel: label,
         entries: entries,
         isSemesterMode: true,
-        onSave: (Map<int, double?> newScores) async {
+        onSave: (Map<String, double?> newScores) async {
           // Update existing override assignment score
           final notifier = ref.read(scoreNotifierProvider.notifier);
           for (final e in newScores.entries) {
@@ -894,12 +1228,51 @@ class _GradebookMainTabWidgetState
 //  Score Entry Dialog
 // =============================================================================
 
+class _MonthlyAdviserRow {
+  final StudentModel student;
+  final Map<String, double> subjectYearlyAverages;
+  final double totalScore;
+  final double averageScore;
+  final String mention;
+  final int rank;
+
+  const _MonthlyAdviserRow({
+    required this.student,
+    required this.subjectYearlyAverages,
+    required this.totalScore,
+    required this.averageScore,
+    required this.mention,
+    this.rank = 0,
+  });
+
+  String get resultStatus => averageScore >= 25.0 ? 'ជាប់' : 'ធ្លាក់';
+
+  _MonthlyAdviserRow copyWith({
+    StudentModel? student,
+    Map<String, double>? subjectYearlyAverages,
+    double? totalScore,
+    double? averageScore,
+    String? mention,
+    int? rank,
+  }) {
+    return _MonthlyAdviserRow(
+      student: student ?? this.student,
+      subjectYearlyAverages:
+          subjectYearlyAverages ?? this.subjectYearlyAverages,
+      totalScore: totalScore ?? this.totalScore,
+      averageScore: averageScore ?? this.averageScore,
+      mention: mention ?? this.mention,
+      rank: rank ?? this.rank,
+    );
+  }
+}
+
 class _ScoreEntryDialog extends StatefulWidget {
   final String studentName;
   final String titleLabel;
   final List<AssignmentScoreEntry> entries;
   final bool isSemesterMode; // tweaks wording for SEM/YEARLY overrides
-  final Future<void> Function(Map<int, double?> scores) onSave;
+  final Future<void> Function(Map<String, double?> scores) onSave;
   final Future<void> Function(double score, double maxPoints, String name)
   onSaveFreeForm;
 
@@ -917,8 +1290,8 @@ class _ScoreEntryDialog extends StatefulWidget {
 }
 
 class _ScoreEntryDialogState extends State<_ScoreEntryDialog> {
-  late Map<int, String?> _dropdownValues;
-  late Map<int, TextEditingController> _controllers;
+  late Map<String, String?> _dropdownValues;
+  late Map<String, TextEditingController> _controllers;
 
   final _freeScoreCtrl = TextEditingController();
   final _freeMaxCtrl = TextEditingController(text: '100');
@@ -1368,7 +1741,7 @@ class _ScoreEntryDialogState extends State<_ScoreEntryDialog> {
           await widget.onSaveFreeForm(score, maxPts, name);
         }
       } else {
-        final Map<int, double?> result = {};
+        final Map<String, double?> result = {};
         for (final entry in widget.entries) {
           final id = entry.assignment.id!;
           final maxPts = entry.assignment.maxPoints;

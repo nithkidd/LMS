@@ -28,47 +28,87 @@ final subjectNotifierProvider =
 
 class SubjectNotifier extends AsyncNotifier<List<SubjectModel>> {
   SubjectRepository get _repository => ref.read(subjectRepositoryProvider);
+  final Map<String, List<SubjectModel>> _cache = {};
 
   @override
   Future<List<SubjectModel>> build() async {
     return [];
   }
 
-  Future<void> loadSubjectsForClass(int classId) async {
-    state = const AsyncValue.loading();
+  Future<void> loadSubjectsForClass(String classId, {bool refresh = false}) async {
+    final cachedSubjects = _cache[classId];
+    if (cachedSubjects != null && !refresh) {
+      state = AsyncValue.data(cachedSubjects);
+      return;
+    }
+
+    if (cachedSubjects == null) {
+      state = const AsyncValue.loading();
+    } else {
+      state = AsyncValue.data(cachedSubjects);
+    }
+
     state = await AsyncValue.guard(() async {
-      return await _repository.getByClassId(classId);
+      final subjects = await _repository.getByClassId(classId);
+      _cache[classId] = subjects;
+      return subjects;
     });
   }
 
-  Future<void> addSubject(int classId, String name) async {
+  Future<void> addSubject(String classId, String name) async {
     final newSubject = SubjectModel(classId: classId, name: name);
-    await _repository.insert(newSubject);
-    await loadSubjectsForClass(classId);
+    final id = await _repository.insert(newSubject);
+    final currentSubjects = _cache[classId] ?? const <SubjectModel>[];
+    final nextDisplayOrder = currentSubjects.length;
+    final updatedSubjects = [
+      ...currentSubjects,
+      newSubject.copyWith(id: id, displayOrder: nextDisplayOrder),
+    ];
+
+    _cache[classId] = updatedSubjects;
+    state = AsyncValue.data(updatedSubjects);
   }
 
   Future<void> updateSubject(SubjectModel subject) async {
     await _repository.update(subject);
-    await loadSubjectsForClass(subject.classId);
+    final updatedSubjects =
+        (_cache[subject.classId] ?? const <SubjectModel>[])
+            .map((item) => item.id == subject.id ? subject : item)
+            .toList(growable: false);
+    _cache[subject.classId] = updatedSubjects;
+    state = AsyncValue.data(updatedSubjects);
   }
 
-  Future<void> deleteSubject(int id, int classId) async {
+  Future<void> deleteSubject(String id, String classId) async {
     await _repository.delete(id);
-    await loadSubjectsForClass(classId);
+    final updatedSubjects =
+        (_cache[classId] ?? const <SubjectModel>[])
+            .where((subject) => subject.id != id)
+            .toList(growable: false);
+    _cache[classId] = updatedSubjects;
+    state = AsyncValue.data(updatedSubjects);
   }
 
   Future<void> reorderSubjects(
-    int classId,
+    String classId,
     List<SubjectModel> orderedSubjects,
   ) async {
+    final normalizedSubjects = orderedSubjects
+        .asMap()
+        .entries
+        .map(
+          (entry) => entry.value.copyWith(displayOrder: entry.key),
+        )
+        .toList(growable: false);
     await _repository.reorderSubjects(
       classId: classId,
-      orderedSubjects: orderedSubjects,
+      orderedSubjects: normalizedSubjects,
     );
-    await loadSubjectsForClass(classId);
+    _cache[classId] = normalizedSubjects;
+    state = AsyncValue.data(normalizedSubjects);
   }
 
-  Future<int> syncMissingAdviserSubjects(int classId) async {
+  Future<int> syncMissingAdviserSubjects(String classId) async {
     final existing = await _repository.getByClassId(classId);
     final existingNames = existing
         .map((subject) => subject.name.trim())
@@ -85,7 +125,7 @@ class SubjectNotifier extends AsyncNotifier<List<SubjectModel>> {
       }
     }
 
-    await loadSubjectsForClass(classId);
+    await loadSubjectsForClass(classId, refresh: true);
     return inserted;
   }
 }

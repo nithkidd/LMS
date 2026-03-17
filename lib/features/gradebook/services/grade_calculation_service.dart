@@ -1,38 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../students/models/student_model.dart';
-import '../../subjects/models/subject_model.dart';
-import '../../assignments/models/assignment_model.dart';
 
-import '../../students/providers/student_provider.dart';
-import '../../subjects/providers/subject_provider.dart';
+import '../../assignments/models/assignment_model.dart';
 import '../../assignments/providers/assignment_provider.dart';
+import '../../students/models/student_model.dart';
+import '../../students/providers/student_provider.dart';
+import '../../subjects/models/subject_model.dart';
+import '../../subjects/providers/subject_provider.dart';
+import '../models/student_score.dart';
 import '../providers/score_provider.dart';
 
-/// Represents a single assignment and the score a specific student has for it.
 class AssignmentScoreEntry {
   final AssignmentModel assignment;
-  final double? currentScore; // null = not yet graded
+  final double? currentScore;
 
   const AssignmentScoreEntry({required this.assignment, this.currentScore});
 }
 
 class SubjectTeacherRow {
   final StudentModel student;
-  final Map<String, double> monthlyPercentages; // 'Jan': 85.0
-  final Map<String, double>
-  monthlyRawScores; // 'Jan': 42.0 (total points earned)
-  // 'Jan': [AssignmentScoreEntry, ...] – allows per-assignment grade editing
+  final Map<String, double> monthlyPercentages;
+  final Map<String, double> monthlyRawScores;
   final Map<String, List<AssignmentScoreEntry>> monthlyEntries;
   final double sem1Average;
   final double sem2Average;
   final double yearlyAverage;
-  // Override entries – non-null when teacher manually set the semester/yearly score.
-  // month tags: 'SEM1', 'SEM2', 'YEARLY'
   final AssignmentScoreEntry? sem1OverrideEntry;
   final AssignmentScoreEntry? sem2OverrideEntry;
   final AssignmentScoreEntry? yearlyOverrideEntry;
 
-  SubjectTeacherRow({
+  const SubjectTeacherRow({
     required this.student,
     required this.monthlyPercentages,
     required this.monthlyRawScores,
@@ -46,276 +42,728 @@ class SubjectTeacherRow {
   });
 }
 
-class ClassAdviserRow {
-  final StudentModel student;
-  final Map<int, double> subjectYearlyAverages;
-  final double overallPercentage;
-  final String grade;
+class RankedStudentScore {
+  final StudentScore studentScore;
+  final double totalScore;
+  final double averageScore;
+  final String mention;
   final int rank;
 
-  ClassAdviserRow({
-    required this.student,
-    required this.subjectYearlyAverages,
-    required this.overallPercentage,
-    required this.grade,
+  const RankedStudentScore({
+    required this.studentScore,
+    required this.totalScore,
+    required this.averageScore,
+    required this.mention,
     required this.rank,
   });
+}
+
+class ClassAdviserRow {
+  final StudentModel student;
+  final StudentScore studentScore;
+  final Map<String, double> subjectScoresBySubjectId;
+  final double totalScore;
+  final double averageScore;
+  final String mention;
+  final int rank;
+
+  const ClassAdviserRow({
+    required this.student,
+    required this.studentScore,
+    required this.subjectScoresBySubjectId,
+    required this.totalScore,
+    required this.averageScore,
+    required this.mention,
+    required this.rank,
+  });
+
+  Map<String, double> get subjectYearlyAverages => subjectScoresBySubjectId;
+  double get overallPercentage => averageScore;
+  String get grade => mention;
+  String get resultStatus => averageScore >= 25.0 ? 'ជាប់' : 'ធ្លាក់';
+}
+
+class AdvisorRankingPrintRow {
+  final int rank;
+  final String fullName;
+  final double totalScore;
+  final double averageScore;
+  final String mention;
+  final String resultStatus;
+
+  const AdvisorRankingPrintRow({
+    required this.rank,
+    required this.fullName,
+    required this.totalScore,
+    required this.averageScore,
+    required this.mention,
+    required this.resultStatus,
+  });
+
+  factory AdvisorRankingPrintRow.fromAdviserRow(ClassAdviserRow row) {
+    return AdvisorRankingPrintRow(
+      rank: row.rank,
+      fullName: row.student.name,
+      totalScore: row.totalScore,
+      averageScore: row.averageScore,
+      mention: row.mention,
+      resultStatus: row.resultStatus,
+    );
+  }
+}
+
+class AdvisorRankingPrintData {
+  final List<AdvisorRankingPrintRow> rows;
+
+  const AdvisorRankingPrintData({required this.rows});
+
+  factory AdvisorRankingPrintData.empty() {
+    return const AdvisorRankingPrintData(rows: []);
+  }
 }
 
 class GradeCalculationData {
   final List<SubjectModel> subjects;
   final List<ClassAdviserRow> adviserRows;
-  // Map of subjectId to Teacher rows
-  final Map<int, List<SubjectTeacherRow>> subjectTeacherRows;
+  final AdvisorRankingPrintData advisorRankingPrintData;
+  final Map<String, List<SubjectTeacherRow>> subjectTeacherRows;
+  final ClassSummary classSummary;
+  final double totalCoefficient;
 
-  GradeCalculationData({
+  const GradeCalculationData({
     required this.subjects,
     required this.adviserRows,
+    required this.advisorRankingPrintData,
     required this.subjectTeacherRows,
+    required this.classSummary,
+    this.totalCoefficient = 15.5,
   });
 }
 
-final gradeCalculationProvider = FutureProvider.family<GradeCalculationData, int>(
-  (ref, classId) async {
-    // Subscribe to dependencies so it auto-recalculates
-    final studentsState = ref.watch(studentNotifierProvider);
-    final subjectsState = ref.watch(subjectNotifierProvider);
-    final assignmentsState = ref.watch(assignmentNotifierProvider);
-    ref.watch(scoreNotifierProvider); // re-trigger on score change
+enum _SubjectScoreKey {
+  khmer,
+  civics,
+  history,
+  geography,
+  math,
+  physics,
+  chemistry,
+  biology,
+  earthScience,
+  foreignLanguage,
+  economics,
+  art,
+  pe,
+  chinese,
+}
 
-    if (studentsState is! AsyncData ||
-        subjectsState is! AsyncData ||
-        assignmentsState is! AsyncData) {
-      throw Exception('Loading dependencies...');
-    }
+const List<_SubjectScoreKey> _subjectScoreOrder = [
+  _SubjectScoreKey.khmer,
+  _SubjectScoreKey.civics,
+  _SubjectScoreKey.history,
+  _SubjectScoreKey.geography,
+  _SubjectScoreKey.math,
+  _SubjectScoreKey.physics,
+  _SubjectScoreKey.chemistry,
+  _SubjectScoreKey.biology,
+  _SubjectScoreKey.earthScience,
+  _SubjectScoreKey.foreignLanguage,
+  _SubjectScoreKey.economics,
+  _SubjectScoreKey.art,
+  _SubjectScoreKey.pe,
+  _SubjectScoreKey.chinese,
+];
 
-    final students = studentsState.value ?? [];
-    final subjects = subjectsState.value ?? [];
-    final assignments = assignmentsState.value ?? [];
+final gradeProcessingServiceProvider = Provider<GradeProcessingService>((ref) {
+  return const GradeProcessingService();
+});
 
-    final scoreRepo = ref.read(scoreRepositoryProvider);
-    final allScores = await scoreRepo.getScoresByClassId(classId);
+class GradeProcessingService {
+  const GradeProcessingService();
 
-    // Group scores by assignmentId for quick lookup
-    final Map<int, Map<int, double>> scoresByAssignmentAndStudent = {};
-    for (var score in allScores) {
-      if (!scoresByAssignmentAndStudent.containsKey(score.assignmentId)) {
-        scoresByAssignmentAndStudent[score.assignmentId] = {};
+  double calculateTotalScore(StudentScore studentScore) {
+    return studentScore.totalScore;
+  }
+
+  double calculateAverageScore(
+    StudentScore studentScore, {
+    double totalCoefficient = 15.5,
+  }) {
+    return studentScore.averageScore(totalCoefficient: totalCoefficient);
+  }
+
+  List<RankedStudentScore> rankStudents(
+    List<StudentScore> studentScores, {
+    double totalCoefficient = 15.5,
+  }) {
+    final indexedScores =
+        studentScores
+            .asMap()
+            .entries
+            .where((entry) => _isValidStudent(entry.value))
+            .map(
+              (entry) => _IndexedStudentScore(
+                originalIndex: entry.key,
+                studentScore: entry.value,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final totalCompare = calculateTotalScore(
+              b.studentScore,
+            ).compareTo(calculateTotalScore(a.studentScore));
+            if (totalCompare != 0) {
+              return totalCompare;
+            }
+            return a.originalIndex.compareTo(b.originalIndex);
+          });
+
+    final rankedScores = <RankedStudentScore>[];
+    double? previousTotalScore;
+    var currentRank = 1;
+
+    for (var index = 0; index < indexedScores.length; index++) {
+      final studentScore = indexedScores[index].studentScore;
+      final totalScore = calculateTotalScore(studentScore);
+
+      if (previousTotalScore != null && totalScore != previousTotalScore) {
+        currentRank = index + 1;
       }
-      scoresByAssignmentAndStudent[score.assignmentId]![score.studentId] =
-          score.pointsEarned;
+
+      rankedScores.add(
+        RankedStudentScore(
+          studentScore: studentScore,
+          totalScore: totalScore,
+          averageScore: calculateAverageScore(
+            studentScore,
+            totalCoefficient: totalCoefficient,
+          ),
+          mention: studentScore.mention(totalCoefficient: totalCoefficient),
+          rank: currentRank,
+        ),
+      );
+
+      previousTotalScore = totalScore;
     }
 
-    // 1. Calculate Subject Teacher Rows
-    Map<int, List<SubjectTeacherRow>> subjectTeacherRows = {};
-    Map<int, Map<int, double>> studentToSubjectYearlyAverage =
-        {}; // studentId -> {subjectId -> yearlyAverage}
+    return rankedScores;
+  }
 
-    final sem1Months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    final sem2Months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  ClassSummary buildClassSummary(
+    List<StudentScore> studentScores, {
+    double totalCoefficient = 15.5,
+  }) {
+    final validStudents = studentScores.where(_isValidStudent).toList();
+    final mentionCounts = <String, int>{
+      'ល្អ': 0,
+      'ល្អបង្គួរ': 0,
+      'មធ្យម': 0,
+      'ខ្សោយ': 0,
+    };
 
-    for (var subject in subjects) {
-      List<SubjectTeacherRow> rows = [];
-      final subjectAssignments = assignments
-          .where((a) => a.subjectId == subject.id)
-          .toList();
+    for (final studentScore in validStudents) {
+      final mention = studentScore.mention(totalCoefficient: totalCoefficient);
+      mentionCounts[mention] = (mentionCounts[mention] ?? 0) + 1;
+    }
 
-      for (var student in students) {
-        studentToSubjectYearlyAverage.putIfAbsent(student.id!, () => {});
+    return ClassSummary(
+      totalStudents: validStudents.length,
+      femaleStudents: validStudents.where((student) => student.isFemale).length,
+      mentionCounts: mentionCounts,
+    );
+  }
 
-        Map<String, double> monthlyPercentages = {};
-        Map<String, double> monthlyRawScores = {};
-        Map<String, List<AssignmentScoreEntry>> monthlyEntries = {};
+  List<ClassAdviserRow> buildRankedAdviserRows({
+    required List<StudentModel> students,
+    required List<SubjectModel> subjects,
+    required Map<String, Map<String, double>> subjectScoresByStudentId,
+    double totalCoefficient = 15.5,
+  }) {
+    final subjectKeyBySubjectId = _buildSubjectKeyBySubjectId(subjects);
+    final studentByScoreId = <String, StudentModel>{};
+    final subjectValuesByScoreId = <String, Map<String, double>>{};
+    final studentScores = <StudentScore>[];
 
-        double sem1Earned = 0, sem1Max = 0;
-        double sem2Earned = 0, sem2Max = 0;
+    for (var index = 0; index < students.length; index++) {
+      final student = students[index];
+      final studentKey = _studentKey(student, index);
+      final subjectScores =
+          subjectScoresByStudentId[studentKey] ?? const <String, double>{};
+      final studentScore = _buildStudentScore(
+        studentKey: studentKey,
+        fullName: student.name,
+        subjects: subjects,
+        subjectScoresBySubjectId: subjectScores,
+        subjectKeyBySubjectId: subjectKeyBySubjectId,
+      );
 
-        // Compute raw aggregations per month first.
-        // Special month tags 'SEM1', 'SEM2', 'YEARLY' are treated as overrides
-        // and excluded from the regular monthly grid.
-        const overrideMonths = {'SEM1', 'SEM2', 'YEARLY'};
-        Map<String, double> monthlyMaxMap = {};
+      studentByScoreId[studentKey] = student;
+      subjectValuesByScoreId[studentKey] = {
+        for (final subject in subjects)
+          if (subject.id != null) subject.id!: subjectScores[subject.id!] ?? 0,
+      };
+      studentScores.add(studentScore);
+    }
 
-        AssignmentScoreEntry? sem1OverrideEntry;
-        AssignmentScoreEntry? sem2OverrideEntry;
-        AssignmentScoreEntry? yearlyOverrideEntry;
+    final rankedStudentScores = rankStudents(
+      studentScores,
+      totalCoefficient: totalCoefficient,
+    );
 
-        for (var assignment in subjectAssignments) {
-          final pointsEarned =
-              scoresByAssignmentAndStudent[assignment.id!]?[student.id];
-
-          // Handle override assignments (SEM1 / SEM2 / YEARLY)
-          if (overrideMonths.contains(assignment.month)) {
-            final entry = AssignmentScoreEntry(
-              assignment: assignment,
-              currentScore: pointsEarned,
-            );
-            if (assignment.month == 'SEM1') sem1OverrideEntry = entry;
-            if (assignment.month == 'SEM2') sem2OverrideEntry = entry;
-            if (assignment.month == 'YEARLY') yearlyOverrideEntry = entry;
-            continue; // skip from regular month grid
+    return rankedStudentScores
+        .map((rankedScore) {
+          final student = studentByScoreId[rankedScore.studentScore.id];
+          if (student == null) {
+            return null;
           }
 
-          // Build per-assignment entry for the monthly grid dialog
-          monthlyEntries.putIfAbsent(assignment.month, () => []);
-          monthlyEntries[assignment.month]!.add(
-            AssignmentScoreEntry(
-              assignment: assignment,
-              currentScore: pointsEarned,
-            ),
-          );
-
-          if (pointsEarned != null) {
-            monthlyRawScores[assignment.month] =
-                (monthlyRawScores[assignment.month] ?? 0) + pointsEarned;
-            monthlyMaxMap[assignment.month] =
-                (monthlyMaxMap[assignment.month] ?? 0) + assignment.maxPoints;
-            if (sem1Months.contains(assignment.month)) {
-              sem1Earned += pointsEarned;
-              sem1Max += assignment.maxPoints;
-            } else if (sem2Months.contains(assignment.month)) {
-              sem2Earned += pointsEarned;
-              sem2Max += assignment.maxPoints;
-            }
-          } else {
-            monthlyMaxMap[assignment.month] =
-                (monthlyMaxMap[assignment.month] ?? 0) + assignment.maxPoints;
-            if (sem1Months.contains(assignment.month)) {
-              sem1Max += assignment.maxPoints;
-            } else if (sem2Months.contains(assignment.month)) {
-              sem2Max += assignment.maxPoints;
-            }
-          }
-        }
-
-        // Compute monthly percentages
-        monthlyRawScores.forEach((month, earned) {
-          final max = monthlyMaxMap[month] ?? 0;
-          if (max > 0) monthlyPercentages[month] = (earned / max) * 100;
-        });
-
-        // Base calculated averages
-        double sem1Avg = sem1Max > 0 ? (sem1Earned / sem1Max) * 100 : 0.0;
-        double sem2Avg = sem2Max > 0 ? (sem2Earned / sem2Max) * 100 : 0.0;
-        double totalMax = sem1Max + sem2Max;
-        double totalEarned = sem1Earned + sem2Earned;
-        double yearlyAvg = totalMax > 0 ? (totalEarned / totalMax) * 100 : 0.0;
-
-        // Apply overrides when the teacher manually set a semester/yearly score
-        if (sem1OverrideEntry?.currentScore != null) {
-          final e = sem1OverrideEntry!;
-          sem1Avg = (e.currentScore! / e.assignment.maxPoints) * 100;
-        }
-        if (sem2OverrideEntry?.currentScore != null) {
-          final e = sem2OverrideEntry!;
-          sem2Avg = (e.currentScore! / e.assignment.maxPoints) * 100;
-        }
-        if (yearlyOverrideEntry?.currentScore != null) {
-          final e = yearlyOverrideEntry!;
-          yearlyAvg = (e.currentScore! / e.assignment.maxPoints) * 100;
-        }
-
-        studentToSubjectYearlyAverage[student.id!]![subject.id!] = yearlyAvg;
-
-        rows.add(
-          SubjectTeacherRow(
+          return ClassAdviserRow(
             student: student,
-            monthlyPercentages: monthlyPercentages,
-            monthlyRawScores: monthlyRawScores,
-            monthlyEntries: monthlyEntries,
-            sem1Average: sem1Avg,
-            sem2Average: sem2Avg,
-            yearlyAverage: yearlyAvg,
-            sem1OverrideEntry: sem1OverrideEntry,
-            sem2OverrideEntry: sem2OverrideEntry,
-            yearlyOverrideEntry: yearlyOverrideEntry,
+            studentScore: rankedScore.studentScore,
+            subjectScoresBySubjectId:
+                subjectValuesByScoreId[rankedScore.studentScore.id] ??
+                const <String, double>{},
+            totalScore: rankedScore.totalScore,
+            averageScore: rankedScore.averageScore,
+            mention: rankedScore.mention,
+            rank: rankedScore.rank,
+          );
+        })
+        .whereType<ClassAdviserRow>()
+        .toList();
+  }
+
+  AdvisorRankingPrintData buildAdvisorRankingPrintData(
+    List<ClassAdviserRow> adviserRows,
+  ) {
+    if (adviserRows.isEmpty) {
+      return AdvisorRankingPrintData.empty();
+    }
+
+    final sortedRows = adviserRows.asMap().entries.toList()
+      ..sort((a, b) {
+        final rankCompare = a.value.rank.compareTo(b.value.rank);
+        if (rankCompare != 0) {
+          return rankCompare;
+        }
+        return a.key.compareTo(b.key);
+      });
+
+    final printRows = sortedRows
+        .map((entry) => AdvisorRankingPrintRow.fromAdviserRow(entry.value))
+        .toList(growable: false);
+
+    return AdvisorRankingPrintData(rows: printRows);
+  }
+
+  StudentScore _buildStudentScore({
+    required String studentKey,
+    required String fullName,
+    required List<SubjectModel> subjects,
+    required Map<String, double> subjectScoresBySubjectId,
+    required Map<String, _SubjectScoreKey> subjectKeyBySubjectId,
+  }) {
+    final values = <_SubjectScoreKey, double?>{};
+
+    for (final subject in subjects) {
+      final subjectId = subject.id;
+      if (subjectId == null) {
+        continue;
+      }
+
+      final subjectKey = subjectKeyBySubjectId[subjectId];
+      if (subjectKey == null) {
+        continue;
+      }
+
+      values[subjectKey] = subjectScoresBySubjectId[subjectId];
+    }
+
+    return StudentScore(
+      id: studentKey,
+      fullName: fullName,
+      khmer: values[_SubjectScoreKey.khmer],
+      civics: values[_SubjectScoreKey.civics],
+      history: values[_SubjectScoreKey.history],
+      geography: values[_SubjectScoreKey.geography],
+      math: values[_SubjectScoreKey.math],
+      physics: values[_SubjectScoreKey.physics],
+      chemistry: values[_SubjectScoreKey.chemistry],
+      biology: values[_SubjectScoreKey.biology],
+      earthScience: values[_SubjectScoreKey.earthScience],
+      foreignLanguage: values[_SubjectScoreKey.foreignLanguage],
+      economics: values[_SubjectScoreKey.economics],
+      art: values[_SubjectScoreKey.art],
+      pe: values[_SubjectScoreKey.pe],
+      chinese: values[_SubjectScoreKey.chinese],
+    );
+  }
+
+  Map<String, _SubjectScoreKey> _buildSubjectKeyBySubjectId(
+    List<SubjectModel> subjects,
+  ) {
+    final keysBySubjectId = <String, _SubjectScoreKey>{};
+    final usedKeys = <_SubjectScoreKey>{};
+
+    for (final subject in subjects) {
+      final subjectId = subject.id;
+      if (subjectId == null) {
+        continue;
+      }
+
+      final resolvedKey = _resolveSubjectKey(subject.name);
+      if (resolvedKey == null || usedKeys.contains(resolvedKey)) {
+        continue;
+      }
+
+      keysBySubjectId[subjectId] = resolvedKey;
+      usedKeys.add(resolvedKey);
+    }
+
+    final remainingKeys = _subjectScoreOrder
+        .where((subjectKey) => !usedKeys.contains(subjectKey))
+        .toList();
+
+    for (final subject in subjects) {
+      final subjectId = subject.id;
+      if (subjectId == null ||
+          keysBySubjectId.containsKey(subjectId) ||
+          remainingKeys.isEmpty) {
+        continue;
+      }
+
+      keysBySubjectId[subjectId] = remainingKeys.removeAt(0);
+    }
+
+    return keysBySubjectId;
+  }
+
+  _SubjectScoreKey? _resolveSubjectKey(String rawSubjectName) {
+    final normalizedName = _normalizeSubjectName(rawSubjectName);
+    if (normalizedName.isEmpty) {
+      return null;
+    }
+
+    final defaultSubjectIndex = kAdviserDefaultSubjects.indexWhere(
+      (subjectName) => _normalizeSubjectName(subjectName) == normalizedName,
+    );
+    if (defaultSubjectIndex >= 0 &&
+        defaultSubjectIndex < _subjectScoreOrder.length) {
+      return _subjectScoreOrder[defaultSubjectIndex];
+    }
+
+    for (final entry in _subjectAliases.entries) {
+      if (entry.value.contains(normalizedName)) {
+        return entry.key;
+      }
+    }
+
+    return null;
+  }
+
+  bool _isValidStudent(StudentScore studentScore) {
+    return studentScore.fullName.trim().isNotEmpty;
+  }
+
+  String _studentKey(StudentModel student, int index) {
+    final trimmedId = student.id?.trim();
+    if (trimmedId != null && trimmedId.isNotEmpty) {
+      return trimmedId;
+    }
+    return 'student-$index-${student.name.trim()}';
+  }
+
+  String _normalizeSubjectName(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'[\s\-_./()]+'), '');
+  }
+}
+
+const Map<_SubjectScoreKey, Set<String>> _subjectAliases = {
+  _SubjectScoreKey.khmer: {'khmer', 'khmerlanguage', 'languagekhmer'},
+  _SubjectScoreKey.civics: {
+    'civics',
+    'civiceducation',
+    'moralcivics',
+    'ethicscivics',
+    'moraleducationcivics',
+  },
+  _SubjectScoreKey.history: {'history'},
+  _SubjectScoreKey.geography: {'geography'},
+  _SubjectScoreKey.math: {'math', 'mathematics'},
+  _SubjectScoreKey.physics: {'physics'},
+  _SubjectScoreKey.chemistry: {'chemistry'},
+  _SubjectScoreKey.biology: {'biology'},
+  _SubjectScoreKey.earthScience: {
+    'earthscience',
+    'earth',
+    'geology',
+    'earthstudies',
+  },
+  _SubjectScoreKey.foreignLanguage: {
+    'foreignlanguage',
+    'languageforeign',
+    'english',
+    'french',
+  },
+  _SubjectScoreKey.economics: {'economics', 'economic', 'homeeconomics'},
+  _SubjectScoreKey.art: {'art', 'arts', 'fineart', 'finearts'},
+  _SubjectScoreKey.pe: {
+    'pe',
+    'physicaleducation',
+    'sport',
+    'sports',
+    'physicaleducationandsport',
+  },
+  _SubjectScoreKey.chinese: {'chinese', 'mandarin'},
+};
+
+class _IndexedStudentScore {
+  final int originalIndex;
+  final StudentScore studentScore;
+
+  const _IndexedStudentScore({
+    required this.originalIndex,
+    required this.studentScore,
+  });
+}
+
+class _SubjectTeacherComputation {
+  final Map<String, List<SubjectTeacherRow>> subjectTeacherRows;
+  final Map<String, Map<String, double>> subjectScoresByStudentId;
+
+  const _SubjectTeacherComputation({
+    required this.subjectTeacherRows,
+    required this.subjectScoresByStudentId,
+  });
+}
+
+final gradeCalculationProvider =
+    FutureProvider.family<GradeCalculationData, String>((ref, classId) async {
+      const totalCoefficient = 15.5;
+
+      ref.watch(studentNotifierProvider);
+      ref.watch(subjectNotifierProvider);
+      ref.watch(assignmentNotifierProvider);
+      ref.watch(scoreNotifierProvider);
+
+      final studentRepository = ref.read(studentRepositoryProvider);
+      final subjectRepository = ref.read(subjectRepositoryProvider);
+      final assignmentRepository = ref.read(assignmentRepositoryProvider);
+      final scoreRepository = ref.read(scoreRepositoryProvider);
+      final processingService = ref.read(gradeProcessingServiceProvider);
+      final results = await Future.wait<dynamic>([
+        studentRepository.getStudentsByClassId(classId),
+        subjectRepository.getByClassId(classId),
+        assignmentRepository.getByClassId(classId),
+        scoreRepository.getScoresByClassId(classId),
+      ]);
+
+      final students = results[0] as List<StudentModel>;
+      final subjects = results[1] as List<SubjectModel>;
+      final assignments = results[2] as List<AssignmentModel>;
+      final allScores = results[3] as List;
+
+      final scoresByAssignmentAndStudent = <String, Map<String, double>>{};
+      for (final score in allScores) {
+        scoresByAssignmentAndStudent.putIfAbsent(score.assignmentId, () => {});
+        scoresByAssignmentAndStudent[score.assignmentId]![score.studentId] =
+            score.pointsEarned;
+      }
+
+      final subjectTeacherComputation = _buildSubjectTeacherComputation(
+        students: students,
+        subjects: subjects,
+        assignments: assignments,
+        scoresByAssignmentAndStudent: scoresByAssignmentAndStudent,
+      );
+
+      final adviserRows = processingService.buildRankedAdviserRows(
+        students: students,
+        subjects: subjects,
+        subjectScoresByStudentId:
+            subjectTeacherComputation.subjectScoresByStudentId,
+        totalCoefficient: totalCoefficient,
+      );
+      final advisorRankingPrintData = processingService
+          .buildAdvisorRankingPrintData(adviserRows);
+
+      final classSummary = processingService.buildClassSummary(
+        adviserRows.map((row) => row.studentScore).toList(),
+        totalCoefficient: totalCoefficient,
+      );
+
+      return GradeCalculationData(
+        subjects: subjects,
+        adviserRows: adviserRows,
+        advisorRankingPrintData: advisorRankingPrintData,
+        subjectTeacherRows: subjectTeacherComputation.subjectTeacherRows,
+        classSummary: classSummary,
+        totalCoefficient: totalCoefficient,
+      );
+    });
+
+_SubjectTeacherComputation _buildSubjectTeacherComputation({
+  required List<StudentModel> students,
+  required List<SubjectModel> subjects,
+  required List<AssignmentModel> assignments,
+  required Map<String, Map<String, double>> scoresByAssignmentAndStudent,
+}) {
+  final subjectTeacherRows = <String, List<SubjectTeacherRow>>{};
+  final subjectScoresByStudentId = <String, Map<String, double>>{};
+
+  const sem1Months = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'};
+  const sem2Months = {'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
+  const overrideMonths = {'SEM1', 'SEM2', 'YEARLY'};
+
+  for (var studentIndex = 0; studentIndex < students.length; studentIndex++) {
+    final student = students[studentIndex];
+    final studentKey = _studentKeyForProvider(student, studentIndex);
+    subjectScoresByStudentId.putIfAbsent(studentKey, () => {});
+  }
+
+  for (final subject in subjects) {
+    final subjectId = subject.id;
+    if (subjectId == null) {
+      continue;
+    }
+
+    final subjectAssignments = assignments
+        .where((assignment) => assignment.subjectId == subjectId)
+        .toList();
+    final rows = <SubjectTeacherRow>[];
+
+    for (var studentIndex = 0; studentIndex < students.length; studentIndex++) {
+      final student = students[studentIndex];
+      final studentKey = _studentKeyForProvider(student, studentIndex);
+
+      final monthlyPercentages = <String, double>{};
+      final monthlyRawScores = <String, double>{};
+      final monthlyEntries = <String, List<AssignmentScoreEntry>>{};
+      final monthlyMaxMap = <String, double>{};
+
+      var sem1Earned = 0.0;
+      var sem1Max = 0.0;
+      var sem2Earned = 0.0;
+      var sem2Max = 0.0;
+
+      AssignmentScoreEntry? sem1OverrideEntry;
+      AssignmentScoreEntry? sem2OverrideEntry;
+      AssignmentScoreEntry? yearlyOverrideEntry;
+
+      for (final assignment in subjectAssignments) {
+        final assignmentId = assignment.id;
+        if (assignmentId == null) {
+          continue;
+        }
+
+        final pointsEarned =
+            scoresByAssignmentAndStudent[assignmentId]?[studentKey];
+
+        if (overrideMonths.contains(assignment.month)) {
+          final entry = AssignmentScoreEntry(
+            assignment: assignment,
+            currentScore: pointsEarned,
+          );
+          if (assignment.month == 'SEM1') {
+            sem1OverrideEntry = entry;
+          } else if (assignment.month == 'SEM2') {
+            sem2OverrideEntry = entry;
+          } else if (assignment.month == 'YEARLY') {
+            yearlyOverrideEntry = entry;
+          }
+          continue;
+        }
+
+        monthlyEntries.putIfAbsent(assignment.month, () => []);
+        monthlyEntries[assignment.month]!.add(
+          AssignmentScoreEntry(
+            assignment: assignment,
+            currentScore: pointsEarned,
           ),
         );
+
+        monthlyMaxMap[assignment.month] =
+            (monthlyMaxMap[assignment.month] ?? 0) + assignment.maxPoints;
+
+        if (pointsEarned != null) {
+          monthlyRawScores[assignment.month] =
+              (monthlyRawScores[assignment.month] ?? 0) + pointsEarned;
+          if (sem1Months.contains(assignment.month)) {
+            sem1Earned += pointsEarned;
+          } else if (sem2Months.contains(assignment.month)) {
+            sem2Earned += pointsEarned;
+          }
+        }
+
+        if (sem1Months.contains(assignment.month)) {
+          sem1Max += assignment.maxPoints;
+        } else if (sem2Months.contains(assignment.month)) {
+          sem2Max += assignment.maxPoints;
+        }
       }
-      subjectTeacherRows[subject.id!] = rows;
-    }
 
-    // 2. Calculate Class Adviser Rows
-    List<ClassAdviserRow> unrankedAdviserRows = [];
-
-    for (var student in students) {
-      final subjectAverages = studentToSubjectYearlyAverage[student.id!] ?? {};
-
-      double totalPercentages = 0;
-      int subjectsCount = 0;
-
-      subjectAverages.forEach((_, avg) {
-        if (avg > 0) {
-          // Or maybe just include all subjects if we require them
-          totalPercentages += avg;
-          subjectsCount++;
+      monthlyRawScores.forEach((month, earned) {
+        final max = monthlyMaxMap[month] ?? 0;
+        if (max > 0) {
+          monthlyPercentages[month] = (earned / max) * 100;
         }
       });
 
-      double overall = subjectsCount > 0
-          ? totalPercentages / subjectsCount
+      var sem1Average = sem1Max > 0 ? (sem1Earned / sem1Max) * 100 : 0.0;
+      var sem2Average = sem2Max > 0 ? (sem2Earned / sem2Max) * 100 : 0.0;
+      var yearlyAverage = (sem1Max + sem2Max) > 0
+          ? ((sem1Earned + sem2Earned) / (sem1Max + sem2Max)) * 100
           : 0.0;
 
-      String grade;
-      if (overall >= 90) {
-        grade = 'A';
-      } else if (overall >= 80) {
-        grade = 'B';
-      } else if (overall >= 70) {
-        grade = 'C';
-      } else if (overall >= 60) {
-        grade = 'D';
-      } else if (overall > 0) {
-        grade = 'F';
-      } else {
-        grade = '-';
+      if (sem1OverrideEntry?.currentScore != null) {
+        final override = sem1OverrideEntry!;
+        sem1Average =
+            (override.currentScore! / override.assignment.maxPoints) * 100;
       }
 
-      unrankedAdviserRows.add(
-        ClassAdviserRow(
+      if (sem2OverrideEntry?.currentScore != null) {
+        final override = sem2OverrideEntry!;
+        sem2Average =
+            (override.currentScore! / override.assignment.maxPoints) * 100;
+      }
+
+      if (yearlyOverrideEntry?.currentScore != null) {
+        final override = yearlyOverrideEntry!;
+        yearlyAverage =
+            (override.currentScore! / override.assignment.maxPoints) * 100;
+      }
+
+      subjectScoresByStudentId[studentKey]![subjectId] = yearlyAverage;
+
+      rows.add(
+        SubjectTeacherRow(
           student: student,
-          subjectYearlyAverages: subjectAverages,
-          overallPercentage: overall,
-          grade: grade,
-          rank: 0, // placeholder
+          monthlyPercentages: monthlyPercentages,
+          monthlyRawScores: monthlyRawScores,
+          monthlyEntries: monthlyEntries,
+          sem1Average: sem1Average,
+          sem2Average: sem2Average,
+          yearlyAverage: yearlyAverage,
+          sem1OverrideEntry: sem1OverrideEntry,
+          sem2OverrideEntry: sem2OverrideEntry,
+          yearlyOverrideEntry: yearlyOverrideEntry,
         ),
       );
     }
 
-    // 3. Assign Ranks
-    // Sort by overall descending
-    unrankedAdviserRows.sort(
-      (a, b) => b.overallPercentage.compareTo(a.overallPercentage),
-    );
+    subjectTeacherRows[subjectId] = rows;
+  }
 
-    List<ClassAdviserRow> rankedRows = [];
-    int currentRank = 1;
-    for (int i = 0; i < unrankedAdviserRows.length; i++) {
-      if (i > 0 &&
-          unrankedAdviserRows[i].overallPercentage <
-              unrankedAdviserRows[i - 1].overallPercentage) {
-        currentRank = i + 1;
-      }
-      // if equals, currentRank remains the same (e.g. 1, 1, 3)
+  return _SubjectTeacherComputation(
+    subjectTeacherRows: subjectTeacherRows,
+    subjectScoresByStudentId: subjectScoresByStudentId,
+  );
+}
 
-      // Only assign actual rank if they have a non-zero overall
-      final r = unrankedAdviserRows[i].overallPercentage > 0 ? currentRank : 0;
-
-      rankedRows.add(
-        ClassAdviserRow(
-          student: unrankedAdviserRows[i].student,
-          subjectYearlyAverages: unrankedAdviserRows[i].subjectYearlyAverages,
-          overallPercentage: unrankedAdviserRows[i].overallPercentage,
-          grade: unrankedAdviserRows[i].grade,
-          rank: r,
-        ),
-      );
-    }
-
-    return GradeCalculationData(
-      subjects: subjects,
-      adviserRows: rankedRows,
-      subjectTeacherRows: subjectTeacherRows,
-    );
-  },
-);
+String _studentKeyForProvider(StudentModel student, int index) {
+  final trimmedId = student.id?.trim();
+  if (trimmedId != null && trimmedId.isNotEmpty) {
+    return trimmedId;
+  }
+  return 'student-$index-${student.name.trim()}';
+}

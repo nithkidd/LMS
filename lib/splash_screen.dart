@@ -1,114 +1,92 @@
 import 'package:flutter/material.dart';
-import 'package:trellis/core/theme/app_theme.dart';
 
-class SplashScreen extends StatefulWidget {
+import 'core/localization/app_localizations.dart';
+import 'core/theme/app_theme.dart';
+
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated Logo
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.background,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Image.asset(
-                      'assets/trellis-logo.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
+    final l10n = AppLocalizations.of(context);
 
-            // App Name
-            FadeTransition(
-              opacity: _fadeAnimation,
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF8FBFF), AppColors.canvas],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.paddingXl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Trellis',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontFamily: 'Kantumruy Pro',
+                  Container(
+                    width: 132,
+                    height: 132,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.surfaceRaised,
+                          AppColors.primarySoft,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: AppShadows.surface,
+                    ),
+                    child: Center(
+                      child: Image.asset(
+                        'assets/trellis-logo.png',
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSizes.paddingLg),
                   Text(
-                    'Education Management System',
-                    style: TextStyle(
-                      fontSize: 14,
+                    l10n.splashTitle,
+                    style: Theme.of(context).textTheme.displaySmall,
+                  ),
+                  const SizedBox(height: AppSizes.paddingSm),
+                  Text(
+                    l10n.splashTagline,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                      fontFamily: 'Kantumruy Pro',
                     ),
+                  ),
+                  const SizedBox(height: AppSizes.paddingLg),
+                  const SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  const SizedBox(height: AppSizes.paddingMd),
+                  Text(
+                    l10n.splashLoading,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.paddingSm),
+                  Text(
+                    'Preparing a calm, role-shaped workspace',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 64),
-
-            // Loading Indicator
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

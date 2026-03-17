@@ -1,7 +1,7 @@
 class ScoreModel {
-  final int? id;
-  final int studentId;
-  final int assignmentId;
+  final String? id;
+  final String studentId;
+  final String assignmentId;
   final double pointsEarned;
 
   ScoreModel({
@@ -11,28 +11,29 @@ class ScoreModel {
     required this.pointsEarned,
   });
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toDto() {
     return {
-      'id': id,
       'student_id': studentId,
       'assignment_id': assignmentId,
       'points_earned': pointsEarned,
     };
   }
 
-  factory ScoreModel.fromMap(Map<String, dynamic> map) {
+  factory ScoreModel.fromDto(Map<dynamic, dynamic> map, String id) {
     return ScoreModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      studentId: map['student_id'] as int,
-      assignmentId: map['assignment_id'] as int,
-      pointsEarned: (map['points_earned'] as num).toDouble(),
+      id: id,
+      studentId: map['student_id']?.toString() ?? '',
+      assignmentId: map['assignment_id']?.toString() ?? '',
+      pointsEarned: map['points_earned'] is num
+          ? (map['points_earned'] as num).toDouble()
+          : double.tryParse(map['points_earned']?.toString() ?? '0') ?? 0.0,
     );
   }
 
   ScoreModel copyWith({
-    int? id,
-    int? studentId,
-    int? assignmentId,
+    String? id,
+    String? studentId,
+    String? assignmentId,
     double? pointsEarned,
   }) {
     return ScoreModel(

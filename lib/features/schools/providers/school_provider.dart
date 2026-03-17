@@ -22,13 +22,16 @@ class SchoolNotifier extends AsyncNotifier<List<SchoolModel>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(schoolRepositoryProvider);
-      final newSchool = SchoolModel(name: name);
+      final newSchool = SchoolModel(
+        name: name,
+        createdAt: DateTime.now().toIso8601String(),
+      );
       await repository.insert(newSchool);
       return _loadSchools();
     });
   }
 
-  Future<void> deleteSchool(int id) async {
+  Future<void> deleteSchool(String id) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(schoolRepositoryProvider);
@@ -37,11 +40,14 @@ class SchoolNotifier extends AsyncNotifier<List<SchoolModel>> {
     });
   }
 
-  Future<void> updateSchool(int id, String newName) async {
+  Future<void> updateSchool(String id, String newName) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(schoolRepositoryProvider);
-      await repository.update(SchoolModel(id: id, name: newName));
+      final existing = await repository.getById(id);
+      if (existing != null) {
+        await repository.update(existing.copyWith(name: newName));
+      }
       return _loadSchools();
     });
   }

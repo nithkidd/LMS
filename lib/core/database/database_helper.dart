@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -32,8 +31,13 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     final String path;
-    if (!kIsWeb &&
-        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    final isDesktop =
+        !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS);
+
+    if (isDesktop) {
       // Use a stable app-specific directory on desktop to avoid
       // CWD-dependent paths from getDatabasesPath() on Windows.
       final dir = await getApplicationSupportDirectory();

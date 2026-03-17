@@ -1,103 +1,129 @@
-import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../models/score_model.dart';
 
 class ScoreRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  Future<int> upsert(ScoreModel score) async {
-    Database db = await _dbHelper.database;
-    // Uses the UNIQUE constraint on (student_id, assignment_id) to overwrite existing scores
-    return await db.insert(
+  Future<String> upsert(ScoreModel score) async {
+    final db = await _dbHelper.database;
+    final existing = await db.query(
       DatabaseHelper.tableScores,
-      score.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      columns: ['id'],
+      where: 'student_id = ? AND assignment_id = ?',
+      whereArgs: [score.studentId, score.assignmentId],
+      limit: 1,
     );
+
+    if (existing.isNotEmpty) {
+      final existingId = existing.first['id'].toString();
+      await db.update(
+        DatabaseHelper.tableScores,
+        score.toDto(),
+        where: 'id = ?',
+        whereArgs: [existingId],
+      );
+      return existingId;
+    }
+
+    final id = await db.insert(DatabaseHelper.tableScores, score.toDto());
+    return id.toString();
   }
 
-  Future<List<ScoreModel>> getScoresByStudentId(int studentId) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<List<ScoreModel>> getScoresByStudentId(String studentId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableScores,
       where: 'student_id = ?',
       whereArgs: [studentId],
     );
-    return maps.map((map) => ScoreModel.fromMap(map)).toList();
+    return rows
+        .map((row) => ScoreModel.fromDto(row, row['id'].toString()))
+        .toList();
   }
 
-  Future<List<ScoreModel>> getScoresByAssignmentId(int assignmentId) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<List<ScoreModel>> getScoresByAssignmentId(String assignmentId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableScores,
       where: 'assignment_id = ?',
       whereArgs: [assignmentId],
     );
-    return maps.map((map) => ScoreModel.fromMap(map)).toList();
+    return rows
+        .map((row) => ScoreModel.fromDto(row, row['id'].toString()))
+        .toList();
   }
 
-  Future<ScoreModel?> getById(int id) async {
-    Database db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps = await db.query(
+  Future<ScoreModel?> getById(String id) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
       DatabaseHelper.tableScores,
       where: 'id = ?',
       whereArgs: [id],
+      limit: 1,
     );
-    if (maps.isNotEmpty) {
-      return ScoreModel.fromMap(maps.first);
-    }
-    return null;
+    if (rows.isEmpty) return null;
+    return ScoreModel.fromDto(rows.first, rows.first['id'].toString());
   }
 
-  Future<int> update(ScoreModel score) async {
-    Database db = await _dbHelper.database;
-    return await db.update(
+  Future<void> update(ScoreModel score) async {
+    if (score.id == null) return;
+
+    final db = await _dbHelper.database;
+    await db.update(
       DatabaseHelper.tableScores,
-      score.toMap(),
+      score.toDto(),
       where: 'id = ?',
       whereArgs: [score.id],
     );
   }
 
-  Future<int> delete(int id) async {
-    Database db = await _dbHelper.database;
-    return await db.delete(
+  Future<void> delete(String id) async {
+    final db = await _dbHelper.database;
+    await db.delete(
       DatabaseHelper.tableScores,
       where: 'id = ?',
       whereArgs: [id],
     );
   }
 
-  Future<List<ScoreModel>> getScoresByClassId(int classId) async {
-    Database db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT s.*
-      FROM ${DatabaseHelper.tableScores} s
-      JOIN ${DatabaseHelper.tableAssignments} a ON s.assignment_id = a.id
+  Future<List<ScoreModel>> getScoresByClassId(String classId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT sc.*
+      FROM ${DatabaseHelper.tableScores} sc
+      INNER JOIN ${DatabaseHelper.tableAssignments} a
+        ON a.id = sc.assignment_id
       WHERE a.class_id = ?
-    ''', [classId]);
-    return maps.map((map) => ScoreModel.fromMap(map)).toList();
+      ''',
+      [classId],
+    );
+    return rows
+        .map((row) => ScoreModel.fromDto(row, row['id'].toString()))
+        .toList();
   }
 
+  Future<double> getAverageScoreByStudentId(String studentId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT sc.points_earned, a.max_points
+      FROM ${DatabaseHelper.tableScores} sc
+      INNER JOIN ${DatabaseHelper.tableAssignments} a
+        ON a.id = sc.assignment_id
+      WHERE sc.student_id = ?
+      ''',
+      [studentId],
+    );
+    if (rows.isEmpty) return 0.0;
 
-  /// Calculates the average grade percentage for a student across all their scores.
-  /// Needs to JOIN with assignments table to get max_points.
-  Future<double> getAverageScoreByStudentId(int studentId) async {
-    Database db = await _dbHelper.database;
-    final List<Map<String, dynamic>> result = await db.rawQuery('''
-      SELECT SUM(s.points_earned) as total_earned, SUM(a.max_points) as total_max
-      FROM ${DatabaseHelper.tableScores} s
-      JOIN ${DatabaseHelper.tableAssignments} a ON s.assignment_id = a.id
-      WHERE s.student_id = ?
-    ''', [studentId]);
-
-    if (result.isNotEmpty) {
-      final earned = result.first['total_earned'];
-      final max = result.first['total_max'];
-
-      if (earned != null && max != null && max > 0) {
-        return ((earned as num) / (max as num)) * 100;
-      }
+    double totalEarned = 0;
+    double totalMax = 0;
+    for (final row in rows) {
+      totalEarned += double.tryParse(row['points_earned'].toString()) ?? 0.0;
+      totalMax += double.tryParse(row['max_points'].toString()) ?? 0.0;
     }
-    return 0.0;
+
+    return totalMax > 0 ? (totalEarned / totalMax) * 100 : 0.0;
   }
 }

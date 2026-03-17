@@ -27,7 +27,7 @@ class ExcelTransferService {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
   Future<Map<String, dynamic>> exportSubjects({
-    required int classId,
+    required String classId,
     required String className,
   }) async {
     final db = await _dbHelper.database;
@@ -77,7 +77,7 @@ class ExcelTransferService {
     return {'path': path, 'count': subjects.length};
   }
 
-  Future<int> importSubjects({required int classId}) async {
+  Future<int> importSubjects({required String classId}) async {
     final bytes = await _pickExcelBytes();
     final excel = Excel.decodeBytes(bytes);
 
@@ -122,7 +122,7 @@ class ExcelTransferService {
   }
 
   Future<SubjectImportPreview> previewSubjectsImport({
-    required int classId,
+    required String classId,
   }) async {
     final bytes = await _pickExcelBytes();
     final excel = Excel.decodeBytes(bytes);
@@ -165,7 +165,7 @@ class ExcelTransferService {
   }
 
   Future<int> importSubjectsFromPreview({
-    required int classId,
+    required String classId,
     required List<SubjectImportRow> rows,
   }) async {
     final db = await _dbHelper.database;
@@ -202,7 +202,7 @@ class ExcelTransferService {
   }
 
   Future<Map<String, dynamic>> exportGradebook({
-    required int classId,
+    required String classId,
     required String className,
   }) async {
     final db = await _dbHelper.database;
@@ -383,7 +383,9 @@ class ExcelTransferService {
     };
   }
 
-  Future<GradebookImportSummary> importGradebook({required int classId}) async {
+  Future<GradebookImportSummary> importGradebook({
+    required String classId,
+  }) async {
     final bytes = await _pickExcelBytes();
     final excel = Excel.decodeBytes(bytes);
 
@@ -592,7 +594,7 @@ class ExcelTransferService {
   }
 
   Future<GradebookImportPreview> previewGradebookImport({
-    required int classId,
+    required String classId,
   }) async {
     final bytes = await _pickExcelBytes();
     final excel = Excel.decodeBytes(bytes);
@@ -680,7 +682,7 @@ class ExcelTransferService {
   }
 
   Future<GradebookImportSummary> importGradebookFromPreview({
-    required int classId,
+    required String classId,
     required List<SubjectImportRow> subjects,
     required List<GradebookImportRow> scores,
   }) async {
@@ -822,7 +824,7 @@ class ExcelTransferService {
 
   Future<int> _ensureSubject({
     required DatabaseExecutor txn,
-    required int classId,
+    required String classId,
     required String subjectName,
     required Map<String, int> subjectNameToId,
     required void Function() onCreated,
@@ -842,7 +844,7 @@ class ExcelTransferService {
 
   Future<int> _ensureAssignment({
     required DatabaseExecutor txn,
-    required int classId,
+    required String classId,
     required int subjectId,
     required String assignmentName,
     required String month,
@@ -870,7 +872,7 @@ class ExcelTransferService {
 
   Future<int> _ensureStudent({
     required DatabaseExecutor txn,
-    required int classId,
+    required String classId,
     required String studentName,
     required String remarks,
     required Map<String, int> studentNameToId,
